@@ -583,9 +583,18 @@ const handleMouseUp = async (event) => {
     }
   }
   
+  // 通知父组件拖拽结束，更新连接线
+  emit('node-drag-end', { nodeId: draggingNodeId.value })
+  
   // 清理
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
+  
+  // 清理动画帧
+  if (dragAnimationFrame.value) {
+    cancelAnimationFrame(dragAnimationFrame.value)
+    dragAnimationFrame.value = null
+  }
   
   draggingNodeId.value = null
   dragStartIndex.value = null

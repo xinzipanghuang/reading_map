@@ -1388,17 +1388,22 @@ const handleNodeDragging = ({ nodeId, x, y }) => {
   isDraggingNode.value = true
   draggingNodeId.value = nodeId
   
-  // 清除相关缓存
+  // 清除相关节点的缓存，强制重新计算位置
   nodeLocationCache.delete(nodeId)
-  edgePathCache.clear()
-  
-  // 触发连接线更新（使用防抖，约 60fps）
-  if (edgePathUpdateTimer) {
-    clearTimeout(edgePathUpdateTimer)
+  // 清除相关边的路径缓存
+  for (const [key, _] of edgePathCache.entries()) {
+    if (key.includes(nodeId)) {
+      edgePathCache.delete(key)
+    }
   }
-  edgePathUpdateTimer = setTimeout(() => {
+  
+  // 触发连接线更新（使用 requestAnimationFrame 优化，约 60fps）
+  if (edgePathUpdateTimer) {
+    cancelAnimationFrame(edgePathUpdateTimer)
+  }
+  edgePathUpdateTimer = requestAnimationFrame(() => {
     edgeUpdateTrigger.value++
-  }, 16)
+  })
 }
 
 // 处理节点拖拽结束事件
@@ -1411,12 +1416,15 @@ const handleNodeDragEnd = ({ nodeId }) => {
   edgePathCache.clear()
   
   // 触发连接线更新
-  edgeUpdateTrigger.value++
-  
   if (edgePathUpdateTimer) {
-    clearTimeout(edgePathUpdateTimer)
+    cancelAnimationFrame(edgePathUpdateTimer)
     edgePathUpdateTimer = null
   }
+  
+  // 延迟更新，确保 DOM 已更新
+  requestAnimationFrame(() => {
+    edgeUpdateTrigger.value++
+  })
 }
 
 
