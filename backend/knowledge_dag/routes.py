@@ -3,14 +3,15 @@ from fastapi import APIRouter, HTTPException
 from typing import Optional
 
 from knowledge_dag.models import (
-    CreateProjectRequest, AddChapterRequest, AddSectionRequest,
+    CreateProjectRequest, UpdateProjectRequest, AddChapterRequest, AddSectionRequest,
     AddNodeRequest, UpdateNodeRequest, AddEdgeRequest, UpdateEdgeRequest,
     ReorderNodesRequest, UpdateNodePositionRequest, NodeLocationResponse
 )
 from knowledge_dag.services import (
     ProjectService, ChapterService, SectionService,
-    NodeService, GraphService
+    NodeService, GraphService, ExportService
 )
+from fastapi import UploadFile, File
 
 router = APIRouter()
 
@@ -37,6 +38,12 @@ def create_project(request: CreateProjectRequest):
 def get_project(project_id: str):
     """获取项目详情"""
     return ProjectService.get_project(project_id)
+
+
+@router.put("/projects/{project_id}")
+def update_project(project_id: str, request: UpdateProjectRequest):
+    """更新项目名称"""
+    return ProjectService.update_project(project_id, request.name)
 
 
 @router.delete("/projects/{project_id}")
@@ -124,6 +131,41 @@ def analyze_graph(project_id: str, focus_node: Optional[str] = None):
     return GraphService.analyze_graph(project_id, focus_node)
 
 
+@router.get("/projects/{project_id}/export")
+def export_project(project_id: str):
+    """导出项目为 YAML 格式"""
+    from fastapi.responses import Response
+    import re
+    
+    yaml_content = ExportService.export_to_yaml(project_id)
+    project = ProjectService.get_project(project_id)
+    
+    # 创建完全 ASCII 安全的文件名
+    # 只保留 ASCII 字母、数字、下划线和连字符
+    safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', project.name)
+    safe_filename = re.sub(r'_+', '_', safe_filename)  # 将多个下划线合并为一个
+    safe_filename = safe_filename.strip('_')
+    if not safe_filename:
+        safe_filename = "project"
+    filename = f"{safe_filename}.yaml"
+    
+    # 确保 filename 完全是 ASCII
+    filename = filename.encode('ascii', 'ignore').decode('ascii')
+    
+    # 构建 Content-Disposition header，确保完全是 ASCII
+    content_disposition = f'attachment; filename="{filename}"'
+    
+    # 使用 Response，但只使用 ASCII 安全的文件名
+    # 浏览器会使用这个文件名，虽然可能不是原始的中文名称，但可以正常下载
+    return Response(
+        content=yaml_content.encode('utf-8'),  # 确保内容使用 UTF-8 编码
+        media_type="application/x-yaml; charset=utf-8",
+        headers={
+            "Content-Disposition": content_disposition
+        }
+    )
+
+
 @router.get("/projects/{project_id}/nodes/{node_id}/location")
 def get_node_location(project_id: str, node_id: str):
     """获取节点位置信息"""
@@ -132,4 +174,30 @@ def get_node_location(project_id: str, node_id: str):
     if not location:
         raise HTTPException(status_code=404, detail="Node not found")
     return NodeLocationResponse(**location)
+
+
+@router.post("/projects/import")
+def import_project(file: UploadFile = File(...), project_name: Optional[str] = None):
+    """从 YAML 文件导入项目"""
+    try:
+        # 读取文件内容
+        content = file.file.read()
+        yaml_content = content.decode('utf-8')
+        
+        # 导入项目
+        project = ExportService.import_from_yaml(yaml_content, project_name)
+        
+        return {
+            "message": "项目导入成功",
+            "project": {
+                "id": project.id,
+                "name": project.name,
+                "chapters_count": len(project.chapters),
+                "edges_count": len(project.edges)
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
 

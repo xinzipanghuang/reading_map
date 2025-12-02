@@ -114,9 +114,11 @@ const getAllNodesWithChapter = () => {
   if (!props.projectData || !props.projectData.chapters) {
     return nodes
   }
-  for (const chapter of props.projectData.chapters) {
+  for (let chapterIndex = 0; chapterIndex < props.projectData.chapters.length; chapterIndex++) {
+    const chapter = props.projectData.chapters[chapterIndex]
     if (!chapter.sections) continue
-    for (const section of chapter.sections) {
+    for (let sectionIndex = 0; sectionIndex < chapter.sections.length; sectionIndex++) {
+      const section = chapter.sections[sectionIndex]
       if (!section.nodes) continue
       for (const node of section.nodes) {
         nodes.push({
@@ -124,7 +126,11 @@ const getAllNodesWithChapter = () => {
           name: node.name || node.id, // 确保有 name 属性
           label: node.name || node.id, // vis-network 使用 label
           chapterId: chapter.id,
-          chapterIndex: props.projectData.chapters.findIndex(ch => ch.id === chapter.id)
+          chapterIndex: chapterIndex,
+          sectionIndex: sectionIndex,
+          // 计算层级：chapter 作为主要层级，section 作为次要层级
+          // 使用小数来区分同一 chapter 内的不同 section
+          level: chapterIndex + sectionIndex * 0.1
         })
       }
     }
@@ -208,41 +214,52 @@ const renderGraph = async () => {
 
     // 创建节点（只包含相关节点）
     const allNodesWithChapter = getAllNodesWithChapter()
-    const nodes = allNodesWithChapter
-      .filter(n => relatedNodeIds.includes(n.id))
-      .map(n => {
-        const chapterColor = chapterColors[n.chapterIndex % chapterColors.length]
-        const isSelected = n.id === props.nodeId
-        
-        return {
-          id: n.id,
-          label: n.name,
-          color: {
-            background: isSelected ? '#3b82f6' : chapterColor.bg,
-            border: isSelected ? '#1e40af' : chapterColor.border,
-            highlight: {
-              background: isSelected ? '#60a5fa' : chapterColor.bg,
-              border: isSelected ? '#2563eb' : chapterColor.icon
-            }
-          },
-          borderWidth: isSelected ? 3 : 2,
-          font: {
-            color: isSelected ? '#ffffff' : chapterColor.text,
-            size: isSelected ? 16 : 14,
-            face: 'Segoe UI',
-            bold: isSelected
-          },
-          shadow: {
-            enabled: true,
-            color: 'rgba(0,0,0,0.15)',
-            size: isSelected ? 8 : 5,
-            x: 2,
-            y: 2
-          },
-          shape: 'box',
-          margin: isSelected ? 15 : 12
-        }
-      })
+    const filteredNodes = allNodesWithChapter.filter(n => relatedNodeIds.includes(n.id))
+    
+    // 获取所有唯一的层级值，用于映射到连续的层级
+    const uniqueLevels = [...new Set(filteredNodes.map(n => n.level))].sort((a, b) => a - b)
+    const levelMap = new Map()
+    uniqueLevels.forEach((level, index) => {
+      levelMap.set(level, index)
+    })
+    
+    const nodes = filteredNodes.map(n => {
+      const chapterColor = chapterColors[n.chapterIndex % chapterColors.length]
+      const isSelected = n.id === props.nodeId
+      
+      // 将原始层级映射到连续的整数层级（0, 1, 2, ...）
+      const mappedLevel = levelMap.get(n.level) || 0
+      
+      return {
+        id: n.id,
+        label: n.name,
+        level: mappedLevel, // 使用映射后的连续层级
+        color: {
+          background: isSelected ? '#3b82f6' : chapterColor.bg,
+          border: isSelected ? '#1e40af' : chapterColor.border,
+          highlight: {
+            background: isSelected ? '#60a5fa' : chapterColor.bg,
+            border: isSelected ? '#2563eb' : chapterColor.icon
+          }
+        },
+        borderWidth: isSelected ? 3 : 2,
+        font: {
+          color: isSelected ? '#ffffff' : chapterColor.text,
+          size: isSelected ? 16 : 14,
+          face: 'Segoe UI',
+          bold: isSelected
+        },
+        shadow: {
+          enabled: true,
+          color: 'rgba(0,0,0,0.15)',
+          size: isSelected ? 8 : 5,
+          x: 2,
+          y: 2
+        },
+        shape: 'box',
+        margin: isSelected ? 15 : 12
+      }
+    })
 
     // 创建边（只包含相关节点之间的边）
     const allEdges = props.projectData.edges || []
@@ -299,12 +316,17 @@ const renderGraph = async () => {
           enabled: true,
           direction: 'UD', // 从上到下
           sortMethod: 'directed',
-          levelSeparation: 150,
-          nodeSpacing: 120,
-          treeSpacing: 200,
+          // 增加层级间距，使 chapter 之间更分明
+          levelSeparation: 200,
+          // 增加节点间距，使同一 section 内的节点更清晰
+          nodeSpacing: 150,
+          // 增加树间距，使不同分支更分明
+          treeSpacing: 250,
           blockShifting: true,
           edgeMinimization: true,
-          parentCentralization: true
+          parentCentralization: true,
+          // 使用自定义层级
+          shakeTowards: 'leaves'
         }
       },
       nodes: {

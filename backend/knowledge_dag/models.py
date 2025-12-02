@@ -99,6 +99,11 @@ class Project(BaseModel):
 class CreateProjectRequest(BaseModel):
     """创建项目请求"""
     name: str = Field(..., min_length=1, max_length=200, description="项目名称")
+
+
+class UpdateProjectRequest(BaseModel):
+    """更新项目请求"""
+    name: str = Field(..., min_length=1, max_length=200, description="项目名称")
     
     @field_validator('name')
     @classmethod
@@ -170,6 +175,7 @@ class UpdateNodePositionRequest(BaseModel):
     """更新节点位置请求"""
     node_id: str = Field(..., description="节点ID")
     section_id: str = Field(..., description="部分ID")
+    chapter_id: Optional[str] = Field(None, description="章节ID（可选，用于验证）")
     x: float = Field(..., description="X坐标（像素）")
     y: float = Field(..., description="Y坐标（像素）")
 

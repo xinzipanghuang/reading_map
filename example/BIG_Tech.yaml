@@ -1,0 +1,287 @@
+project:
+  id: big_tech_1995_2025
+  name: 美股科技巨头演化（1995–2025）
+
+chapters:
+
+#--------------------------------------------
+- id: ch1
+  name: 1995–2002 互联网泡沫与破灭
+  sections:
+  - id: sec1
+    name: Dot-com 泡沫早期
+    nodes:
+
+    # Apple
+    - id: node_apple_pre_2000
+      name: Apple 困境时期
+      content: Mac 业务低迷，公司前景不明
+
+    # Microsoft
+    - id: node_msft_legacy
+      name: Microsoft PC 时代统治
+      content: Windows + Office 形成垄断性生态
+
+    # Amazon
+    - id: node_amzn_1997
+      name: Amazon 上市
+      content: 电商起步，尚未盈利
+
+    # Google
+    - id: node_goog_search_ads
+      name: Google 搜索 + 早期广告模型（2000）
+      content: 搜索服务成为下一代互联网入口
+
+    # Netflix
+    - id: node_nflx_pre_2000
+      name: Netflix 创立（1997）
+      content: DVD 租赁业务为主
+
+    # Meta 尚未出现，不设节点
+
+
+#--------------------------------------------
+- id: ch2
+  name: 2003–2009 Web2 → 移动互联网起点
+  sections:
+  - id: sec2
+    name: 成长期
+    nodes:
+
+    # Apple
+    - id: node_apple_iphone
+      name: iPhone 发布（2007）
+      content: 重新定义手机市场
+
+    # Microsoft
+    - id: node_msft_windows_office_dominate
+      name: PC / Office 时代延续
+      content: 企业市场强势
+
+    # Amazon
+    - id: node_amzn_aws
+      name: AWS 建立（2006）
+      content: 云计算起步
+
+    # Google
+    - id: node_goog_ads_scale
+      name: Google Ads 扩张
+      content: 搜索 + 广告成为主要收入来源
+
+    # Netflix
+    - id: node_nflx_streaming
+      name: Netflix 推出流媒体（2007）
+      content: DVD → 流媒体转型
+
+
+#--------------------------------------------
+- id: ch3
+  name: 2010–2016 移动互联网全面爆发
+  sections:
+  - id: sec3
+    name: 移动 + 云时代上升
+    nodes:
+
+    # Apple
+    - id: node_apple_iphone_ios_ecosystem
+      name: iOS 生态系统成熟
+      content: App Store 形成完整生态
+
+    # Microsoft
+    - id: node_msft_cloud_enterprise
+      name: Microsoft 云端转型（Azure / Office365）
+      content: 企业 SaaS 模式崛起
+
+    # Amazon
+    - id: node_amzn_prime_aws_growth
+      name: AWS 高速增长 + Prime 成熟
+      content: 云 + 物流双引擎
+
+    # Google
+    - id: node_goog_mobile_youtube
+      name: Google 移动广告 + YouTube 增长
+      content: 移动时代流量爆发
+
+    # Meta
+    - id: node_meta_fb_growth
+      name: Facebook 移动广告腾飞
+      content: 用户增长迅猛
+
+    # Netflix
+    - id: node_nflx_global_streaming
+      name: 全球流媒体扩张
+      content: 订阅模式快速增长
+
+
+#--------------------------------------------
+- id: ch4
+  name: 2017–2021 超大市值时代（Trillion Club）
+  sections:
+  - id: sec4
+    name: 万亿俱乐部形成
+    nodes:
+
+    # Apple
+    - id: node_apple_trillion
+      name: Apple 市值破万亿（2018）
+      content: iPhone + 服务双增长
+
+    # Microsoft
+    - id: node_msft_cloud_ai_shift
+      name: Microsoft 云 & AI 战略巩固
+      content: Azure 成为增长核心
+
+    # Amazon
+    - id: node_amzn_market_leader
+      name: Amazon 全面领先（电商 + AWS）
+      content: 全球最大云厂商
+
+    # Google
+    - id: node_goog_alphabet_growth
+      name: Alphabet 多元业务增长
+      content: 广告 + 云 + AI 投入
+
+    # Meta
+    - id: node_meta_ads_crackdown
+      name: Meta 面临隐私打击
+      content: 广告收入和监管压力上升
+
+    # Netflix
+    - id: node_nflx_content_cost_risk
+      name: Netflix 内容成本飙升
+      content: 盈利压力增大
+
+
+#--------------------------------------------
+- id: ch5
+  name: 2022–2025 AI 时代：市值新格局
+  sections:
+  - id: sec5
+    name: 大模型、AI 引擎时代
+    nodes:
+
+    # Apple
+    - id: node_apple_4t
+      name: Apple 市值突破 4 万亿（2025）
+      content: 服务收入与硬件生态驱动
+
+    # Microsoft
+    - id: node_msft_3.8t
+      name: Microsoft 3.8T 市值（2025）
+      content: 云 + AI 带来史上最高估值
+
+    # Amazon
+    - id: node_amzn_cloud_ai
+      name: Amazon AI + 云整合
+      content: AWS 与 AI 技术的深度绑定
+
+    # Google
+    - id: node_alphabet_3t
+      name: Alphabet 市值 3T（2025）
+      content: 搜索 + 广告 + AI 模型推动
+
+    # Meta
+    - id: node_meta_ai_ads
+      name: Meta AI 广告与元宇宙双线发展
+      content: 算法优化 + 轻量 AI 硬件布局
+
+    # Netflix
+    - id: node_nflx_competition_streaming
+      name: Netflix 面临 AI 生成内容竞争
+      content: 流媒体增长放缓
+edges:
+
+  #--------------------------------------------
+  # Apple — 公司历史主线
+  #--------------------------------------------
+  - source: node_apple_pre_2000
+    target: node_apple_iphone
+    label: 危机 → iPhone 时代
+  - source: node_apple_iphone
+    target: node_apple_iphone_ios_ecosystem
+    label: iPhone → iOS 生态
+  - source: node_apple_iphone_ios_ecosystem
+    target: node_apple_trillion
+    label: 生态成熟 → 万亿公司
+  - source: node_apple_trillion
+    target: node_apple_4t
+    label: 万亿 → 四万亿市值
+
+
+  #--------------------------------------------
+  # Microsoft — 公司历史主线
+  #--------------------------------------------
+  - source: node_msft_legacy
+    target: node_msft_windows_office_dominate
+    label: PC 软件时代延续
+  - source: node_msft_windows_office_dominate
+    target: node_msft_cloud_enterprise
+    label: PC → 云转型
+  - source: node_msft_cloud_enterprise
+    target: node_msft_cloud_ai_shift
+    label: 云 → 云 + AI
+  - source: node_msft_cloud_ai_shift
+    target: node_msft_3.8t
+    label: AI 推动市值巅峰
+
+
+  #--------------------------------------------
+  # Amazon — 公司历史主线
+  #--------------------------------------------
+  - source: node_amzn_1997
+    target: node_amzn_aws
+    label: 电商 → 云起步
+  - source: node_amzn_aws
+    target: node_amzn_prime_aws_growth
+    label: AWS → Prime+AWS 双驱动
+  - source: node_amzn_prime_aws_growth
+    target: node_amzn_market_leader
+    label: 云+电商 → 全球领先
+  - source: node_amzn_market_leader
+    target: node_amzn_cloud_ai
+    label: 全面领先 → AI云整合
+
+
+  #--------------------------------------------
+  # Google / Alphabet — 公司历史主线
+  #--------------------------------------------
+  - source: node_goog_search_ads
+    target: node_goog_ads_scale
+    label: 搜索 → 广告扩张
+  - source: node_goog_ads_scale
+    target: node_goog_mobile_youtube
+    label: 广告 → 移动+视频时代
+  - source: node_goog_mobile_youtube
+    target: node_goog_alphabet_growth
+    label: 移动流量 → 多元增长
+  - source: node_goog_alphabet_growth
+    target: node_alphabet_3t
+    label: 多元业务 → 三万亿公司
+
+
+  #--------------------------------------------
+  # Meta — 公司历史主线
+  #--------------------------------------------
+  - source: node_meta_fb_growth
+    target: node_meta_ads_crackdown
+    label: 社交扩张 → 监管压力
+  - source: node_meta_ads_crackdown
+    target: node_meta_ai_ads
+    label: 广告监管 → AI 转型
+
+
+  #--------------------------------------------
+  # Netflix — 公司历史主线
+  #--------------------------------------------
+  - source: node_nflx_pre_2000
+    target: node_nflx_streaming
+    label: DVD → 流媒体
+  - source: node_nflx_streaming
+    target: node_nflx_global_streaming
+    label: 流媒体 → 全球扩张
+  - source: node_nflx_global_streaming
+    target: node_nflx_content_cost_risk
+    label: 全球扩张 → 成本压力
+  - source: node_nflx_content_cost_risk
+    target: node_nflx_competition_streaming
+    label: 成本压力 → 激烈竞争

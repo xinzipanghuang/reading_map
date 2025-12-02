@@ -38,42 +38,99 @@ class Storage:
             """)
             
             # 章节表
+            # 使用复合主键 (project_id, id) 确保项目内章节ID唯一
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS chapters (
-                    id TEXT PRIMARY KEY,
                     project_id TEXT NOT NULL,
+                    id TEXT NOT NULL,
                     name TEXT NOT NULL,
                     position INTEGER,
+                    PRIMARY KEY (project_id, id),
                     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
                 )
             """)
             
-            # 部分表
+            # 部分表（使用复合主键确保项目内部分ID唯一）
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS sections (
-                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
                     chapter_id TEXT NOT NULL,
+                    id TEXT NOT NULL,
                     name TEXT NOT NULL,
                     position INTEGER,
-                    FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE
+                    PRIMARY KEY (project_id, chapter_id, id),
+                    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                    FOREIGN KEY (project_id, chapter_id) REFERENCES chapters(project_id, id) ON DELETE CASCADE
                 )
             """)
             
-            # 节点表
+            # 节点表（使用复合主键确保项目内节点ID唯一）
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS nodes (
-                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    chapter_id TEXT NOT NULL,
                     section_id TEXT NOT NULL,
+                    id TEXT NOT NULL,
                     name TEXT NOT NULL,
                     content TEXT DEFAULT '',
                     position INTEGER,
                     x REAL,
                     y REAL,
-                    FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
+                    PRIMARY KEY (project_id, chapter_id, section_id, id),
+                    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                    FOREIGN KEY (project_id, chapter_id, section_id) REFERENCES sections(project_id, chapter_id, id) ON DELETE CASCADE
                 )
             """)
             
-            # 数据库迁移：为现有数据库添加 x, y 列（如果不存在）
+            # 数据库迁移：为现有数据库添加新列（如果不存在）
+            # 为 sections 表添加 project_id 列（如果不存在）
+            try:
+                cursor.execute("ALTER TABLE sections ADD COLUMN project_id TEXT")
+                # 为现有数据填充 project_id（通过 chapter_id 关联）
+                cursor.execute("""
+                    UPDATE sections 
+                    SET project_id = (
+                        SELECT project_id FROM chapters 
+                        WHERE chapters.id = sections.chapter_id
+                    )
+                    WHERE project_id IS NULL
+                """)
+            except sqlite3.OperationalError:
+                pass  # 列已存在
+            
+            # 为 nodes 表添加 project_id 列（如果不存在）
+            try:
+                cursor.execute("ALTER TABLE nodes ADD COLUMN project_id TEXT")
+                # 为现有数据填充 project_id（通过 section_id -> chapter_id -> project_id 关联）
+                cursor.execute("""
+                    UPDATE nodes 
+                    SET project_id = (
+                        SELECT chapters.project_id 
+                        FROM sections 
+                        JOIN chapters ON sections.chapter_id = chapters.id
+                        WHERE sections.id = nodes.section_id
+                    )
+                    WHERE project_id IS NULL
+                """)
+            except sqlite3.OperationalError:
+                pass  # 列已存在
+            
+            # 为 nodes 表添加 chapter_id 列（如果不存在）
+            try:
+                cursor.execute("ALTER TABLE nodes ADD COLUMN chapter_id TEXT")
+                # 为现有数据填充 chapter_id（通过 section_id 关联）
+                cursor.execute("""
+                    UPDATE nodes 
+                    SET chapter_id = (
+                        SELECT chapter_id FROM sections 
+                        WHERE sections.id = nodes.section_id
+                    )
+                    WHERE chapter_id IS NULL
+                """)
+            except sqlite3.OperationalError:
+                pass  # 列已存在
+            
+            # 为 nodes 表添加 x, y 列（如果不存在）
             try:
                 cursor.execute("ALTER TABLE nodes ADD COLUMN x REAL")
             except sqlite3.OperationalError:
@@ -99,15 +156,32 @@ class Storage:
             
             # 创建索引以提升查询性能
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_chapters_project ON chapters(project_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_sections_chapter ON sections(chapter_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_section ON nodes(section_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_sections_project ON sections(project_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_sections_chapter ON sections(project_id, chapter_id)")
+            # 检查 nodes 表是否有 chapter_id 列，如果有则创建复合索引
+            try:
+                cursor.execute("PRAGMA table_info(nodes)")
+                nodes_info = cursor.fetchall()
+                has_chapter_id = any(col[1] == 'chapter_id' for col in nodes_info)
+                if has_chapter_id:
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_project ON nodes(project_id)")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_section ON nodes(project_id, chapter_id, section_id)")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_id ON nodes(project_id, id)")
+                else:
+                    # 旧结构：只有 project_id 和 section_id
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_project ON nodes(project_id)")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_section ON nodes(project_id, section_id)")
+            except sqlite3.OperationalError:
+                # 表不存在，使用默认索引
+                pass
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_edges_project ON edges(project_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(project_id, source)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(project_id, target)")
             
             conn.commit()
         finally:
             conn.close()
+    
     
     def _load_project(self, project_id: str) -> Optional[Project]:
         """从数据库加载单个项目"""
@@ -133,24 +207,24 @@ class Storage:
             for ch_row in chapter_rows:
                 chapter_id = ch_row['id']
                 
-                # 加载部分
+                # 加载部分（通过 project_id 和 chapter_id 双重过滤）
                 cursor.execute("""
                     SELECT * FROM sections 
-                    WHERE chapter_id = ? 
+                    WHERE project_id = ? AND chapter_id = ? 
                     ORDER BY position, id
-                """, (chapter_id,))
+                """, (project_id, chapter_id))
                 section_rows = cursor.fetchall()
                 
                 sections = []
                 for sec_row in section_rows:
                     section_id = sec_row['id']
                     
-                    # 加载节点
+                    # 加载节点（使用复合主键查询：project_id, chapter_id, section_id）
                     cursor.execute("""
                         SELECT * FROM nodes 
-                        WHERE section_id = ? 
+                        WHERE project_id = ? AND chapter_id = ? AND section_id = ? 
                         ORDER BY position, id
-                    """, (section_id,))
+                    """, (project_id, chapter_id, section_id))
                     node_rows = cursor.fetchall()
                     
                     nodes = []
@@ -287,31 +361,15 @@ class Storage:
                 WHERE id = ?
             """, (project.name, project.updated_at, project.id))
             
-            # 删除旧的结构数据（级联删除会自动处理）
+            # 删除旧的结构数据（通过 project_id 直接删除，更高效且安全）
             # 先删除边，避免外键约束问题
-            # 删除边
             cursor.execute("DELETE FROM edges WHERE project_id = ?", (project.id,))
             
-            # 删除节点
-            cursor.execute("""
-                DELETE FROM nodes 
-                WHERE section_id IN (
-                    SELECT id FROM sections 
-                    WHERE chapter_id IN (
-                        SELECT id FROM chapters 
-                        WHERE project_id = ?
-                    )
-                )
-            """, (project.id,))
+            # 删除节点（直接通过 project_id）
+            cursor.execute("DELETE FROM nodes WHERE project_id = ?", (project.id,))
             
-            # 删除部分
-            cursor.execute("""
-                DELETE FROM sections 
-                WHERE chapter_id IN (
-                    SELECT id FROM chapters 
-                    WHERE project_id = ?
-                )
-            """, (project.id,))
+            # 删除部分（直接通过 project_id）
+            cursor.execute("DELETE FROM sections WHERE project_id = ?", (project.id,))
             
             # 删除章节
             cursor.execute("DELETE FROM chapters WHERE project_id = ?", (project.id,))
@@ -342,27 +400,27 @@ class Storage:
         total_nodes = 0
         saved_node_ids = []
         for ch_idx, chapter in enumerate(project.chapters):
-            # 插入章节
+            # 插入章节（使用复合主键：project_id, id）
             cursor.execute("""
-                INSERT OR REPLACE INTO chapters (id, project_id, name, position)
+                INSERT OR REPLACE INTO chapters (project_id, id, name, position)
                 VALUES (?, ?, ?, ?)
-            """, (chapter.id, project.id, chapter.name, ch_idx))
+            """, (project.id, chapter.id, chapter.name, ch_idx))
             
             for sec_idx, section in enumerate(chapter.sections):
-                # 插入部分
+                # 插入部分（使用复合主键：project_id, chapter_id, id）
                 cursor.execute("""
-                    INSERT OR REPLACE INTO sections (id, chapter_id, name, position)
-                    VALUES (?, ?, ?, ?)
-                """, (section.id, chapter.id, section.name, sec_idx))
+                    INSERT OR REPLACE INTO sections (project_id, chapter_id, id, name, position)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (project.id, chapter.id, section.id, section.name, sec_idx))
                 
                 for node_idx, node in enumerate(section.nodes):
-                    # 插入节点
+                    # 插入节点（使用复合主键：project_id, chapter_id, section_id, id）
                     # 使用节点的 position 字段，如果为 None 则使用索引
                     node_position = node.position if node.position is not None else float(node_idx)
                     cursor.execute("""
-                        INSERT OR REPLACE INTO nodes (id, section_id, name, content, position, x, y)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, (node.id, section.id, node.name, node.content or '', node_position, node.x, node.y))
+                        INSERT OR REPLACE INTO nodes (project_id, chapter_id, section_id, id, name, content, position, x, y)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (project.id, chapter.id, section.id, node.id, node.name, node.content or '', node_position, node.x, node.y))
                     total_nodes += 1
                     saved_node_ids.append(node.id)
         

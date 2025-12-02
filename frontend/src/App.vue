@@ -6,6 +6,8 @@
       :current-project-id="currentProjectId"
       @project-selected="handleProjectSelected"
       @project-created="handleProjectCreated"
+      @project-updated="handleProjectUpdated"
+      @project-deleted="handleProjectDeleted"
     />
 
     <!-- Right Canvas: Knowledge Map -->
@@ -21,6 +23,32 @@
           </p>
       </div>
       <div class="flex items-center gap-4">
+          <!-- Import/Export Buttons -->
+          <button
+            @click="triggerImport"
+            class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-sm flex items-center gap-2"
+            title="从 YAML 导入项目"
+          >
+            <i class="ph ph-upload"></i>
+            导入 YAML
+          </button>
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".yaml,.yml"
+            style="display: none"
+            @change="handleFileImport"
+          />
+          <button
+            v-if="currentProjectId"
+            @click="exportProject"
+            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm flex items-center gap-2"
+            title="导出为 YAML"
+          >
+            <i class="ph ph-download"></i>
+            导出 YAML
+          </button>
+          
           <!-- Link Mode Status -->
           <div
             v-if="linkMode.source"
@@ -42,13 +70,13 @@
         </button>
           </div>
           <div v-else class="text-sm text-gray-500">
-            点击节点选择起点，再点击另一个节点创建连接 | 双击节点查看 DAG
+            按住 Ctrl + 左键点击节点开始创建连接 | 双击节点查看 DAG
           </div>
       </div>
     </header>
 
       <!-- Canvas Area -->
-      <div class="flex-1 overflow-y-auto p-4 relative" v-if="currentProjectId" ref="canvasContainer">
+      <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 relative" v-if="currentProjectId" ref="canvasContainer">
         <!-- Connection Lines SVG Overlay (统一处理所有连接) -->
         <svg
           v-if="crossChapterEdges.length > 0"
@@ -119,8 +147,8 @@
             <!-- 标签背景 -->
             <rect
               v-if="edge.label"
-              :x="getEdgeLabelX(edge) - 40"
-              :y="getEdgeLabelY(edge) - 12"
+              :x="getEdgeLabelX(edge) - (edge.label ? 40 : 35)"
+              :y="getEdgeLabelY(edge) - ((edge.label ? edge.label.split('\n').length : 1) * 16 + 12) / 2"
               :width="edge.label ? 80 : 70"
               :height="(edge.label ? edge.label.split('\n').length : 1) * 16 + 12"
               fill="white"
@@ -231,8 +259,8 @@
             <!-- 标签背景（hover 状态，置顶） -->
             <rect
               v-if="edge.label"
-              :x="getEdgeLabelX(edge) - 40"
-              :y="getEdgeLabelY(edge) - 12"
+              :x="getEdgeLabelX(edge) - (edge.label ? 40 : 35)"
+              :y="getEdgeLabelY(edge) - ((edge.label ? edge.label.split('\n').length : 1) * 16 + 12) / 2"
               :width="edge.label ? 80 : 70"
               :height="(edge.label ? edge.label.split('\n').length : 1) * 16 + 12"
               fill="#dbeafe"
@@ -452,6 +480,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import axios from 'axios'
+import { api } from './api.js'
 import ProjectSidebar from './components/ProjectSidebar.vue'
 import ChapterSection from './components/ChapterSection.vue'
 import DAGPanel from './components/DAGPanel.vue'
@@ -461,6 +490,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const projects = ref([])
 const currentProjectId = ref(null)
 const projectData = reactive({ chapters: [], edges: [] })
+const fileInput = ref(null)
 const newChapterName = ref('')
 const showAddChapterModal = ref(false)
 const linkMode = reactive({ source: null, target: null })
@@ -571,8 +601,11 @@ const loadProject = async () => {
       chaptersData: data.chapters 
     })
     
-    // 清空缓存
+    // 清空所有缓存
     nodeLocationCache.clear()
+    edgePathCache.clear()
+    cachedCrossEdges = []
+    cachedEdgesHash = ''
     
     // 使用 Object.assign 更新响应式对象
     Object.assign(projectData, {
@@ -587,6 +620,13 @@ const loadProject = async () => {
     })
     
     resetLinkMode()
+    
+    // 等待 DOM 更新后触发连接线更新
+    await nextTick()
+    // 延迟触发，确保所有节点都已渲染完成
+    setTimeout(() => {
+      edgeUpdateTrigger.value++
+    }, 200)
   } catch (e) {
     console.error('Failed to load project:', e)
     ElMessage.error('加载项目失败: ' + (e.response?.data?.detail || e.message))
@@ -598,10 +638,134 @@ const handleProjectSelected = (projectId) => {
   loadProject()
 }
 
+const exportProject = async () => {
+  if (!currentProjectId.value) return
+  
+  try {
+    const response = await api.exportProject(currentProjectId.value)
+    
+    // 创建下载链接
+    const blob = new Blob([response.data], { type: 'application/x-yaml' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    // 从响应头获取文件名，或使用默认名称
+    const contentDisposition = response.headers['content-disposition']
+    let filename = 'project.yaml'
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i)
+      if (filenameMatch) {
+        filename = filenameMatch[1]
+      }
+    }
+    
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('项目导出成功')
+  } catch (error) {
+    console.error('Export failed:', error)
+    ElMessage.error('导出失败: ' + (error.response?.data?.detail || error.message))
+  }
+}
+
+const triggerImport = () => {
+  if (fileInput.value) {
+    fileInput.value.click()
+  }
+}
+
+const handleFileImport = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  // 检查文件类型
+  if (!file.name.endsWith('.yaml') && !file.name.endsWith('.yml')) {
+    ElMessage.error('请选择 YAML 文件 (.yaml 或 .yml)')
+    return
+  }
+  
+  try {
+    // 询问项目名称
+    const { value: projectName } = await ElMessageBox.prompt(
+      '请输入项目名称（留空使用 YAML 中的名称）',
+      '导入项目',
+      {
+        confirmButtonText: '导入',
+        cancelButtonText: '取消',
+        inputPlaceholder: '项目名称'
+      }
+    ).catch(() => ({ value: null }))
+    
+    if (projectName === null) {
+      // 用户取消
+      event.target.value = '' // 重置文件选择
+      return
+    }
+    
+    // 上传文件
+    const response = await api.importProject(file, projectName || undefined)
+    
+    ElMessage.success(`项目导入成功: ${response.data.project.name}`)
+    
+    // 刷新项目列表
+    await fetchProjects()
+    
+    // 自动选择导入的项目
+    if (response.data.project.id) {
+      currentProjectId.value = response.data.project.id
+      await loadProject()
+    }
+    
+    // 重置文件选择
+    event.target.value = ''
+  } catch (error) {
+    console.error('Import failed:', error)
+    if (error !== 'cancel') {
+      ElMessage.error('导入失败: ' + (error.response?.data?.detail || error.message))
+    }
+    // 重置文件选择
+    event.target.value = ''
+  }
+}
+
 const handleProjectCreated = (project) => {
   projects.value.push(project)
   currentProjectId.value = project.id
   loadProject()
+}
+
+const handleProjectUpdated = ({ id, name }) => {
+  const project = projects.value.find(p => p.id === id)
+  if (project) {
+    project.name = name
+  }
+  // 如果当前项目被重命名，更新显示
+  if (currentProjectId.value === id) {
+    // 触发重新加载以更新 header 中的项目名称
+    loadProject()
+  }
+}
+
+const handleProjectDeleted = async (projectId) => {
+  // 从列表中移除
+  projects.value = projects.value.filter(p => p.id !== projectId)
+  
+  // 如果删除的是当前项目，选择其他项目或清空
+  if (currentProjectId.value === projectId) {
+    if (projects.value.length > 0) {
+      currentProjectId.value = projects.value[0].id
+      await loadProject()
+    } else {
+      currentProjectId.value = null
+      projectData.chapters = []
+      projectData.edges = []
+    }
+  }
 }
 
 const addChapter = async () => {
@@ -738,36 +902,39 @@ const handleDeleteNode = async (nodeId) => {
 const handleNodeClick = (nodeId, event) => {
   console.log('handleNodeClick called:', { nodeId, event, linkMode: { ...linkMode } })
   
-  // 如果按住 Ctrl 或 Cmd，显示 DAG
+  // 如果按住 Ctrl 或 Cmd
   if (event?.ctrlKey || event?.metaKey) {
-    showDAGForNode(nodeId)
+    // Ctrl + 左键：处理连接逻辑
+    // 阻止事件冒泡
+    if (event) {
+      event.stopPropagation()
+      event.preventDefault() // 防止拖拽
+    }
+
+    // 处理连接逻辑
+    if (!linkMode.source) {
+      // 选择起点
+      linkMode.source = nodeId
+      linkMode.target = null
+      console.log('Set source:', nodeId)
+    } else if (linkMode.source === nodeId) {
+      // 如果点击的是已选中的起点，取消选择
+      resetLinkMode()
+      console.log('Reset link mode')
+    } else if (linkMode.target === nodeId) {
+      // 如果点击的是已选中的终点，取消选择终点
+      linkMode.target = null
+      console.log('Reset target')
+    } else {
+      // 选择终点
+      linkMode.target = nodeId
+      console.log('Set target:', nodeId)
+    }
     return
   }
 
-  // 阻止事件冒泡
-  if (event) {
-    event.stopPropagation()
-  }
-
-  // 处理连接逻辑
-  if (!linkMode.source) {
-    // 选择起点
-    linkMode.source = nodeId
-    linkMode.target = null
-    console.log('Set source:', nodeId)
-  } else if (linkMode.source === nodeId) {
-    // 如果点击的是已选中的起点，取消选择
-    resetLinkMode()
-    console.log('Reset link mode')
-  } else if (linkMode.target === nodeId) {
-    // 如果点击的是已选中的终点，取消选择终点
-    linkMode.target = null
-    console.log('Reset target')
-  } else {
-    // 选择终点
-    linkMode.target = nodeId
-    console.log('Set target:', nodeId)
-  }
+  // 普通左键点击不做任何处理，让拖拽功能正常工作
+  // 如果需要显示 DAG，可以使用其他快捷键或双击
 }
 
 const showDAGForNode = (nodeId) => {
@@ -885,6 +1052,10 @@ let cachedEdgesHash = ''
 // 拖拽状态
 const isDraggingNode = ref(false)
 const draggingNodeId = ref(null)
+
+// 边的路径缓存
+let edgePathCache = new Map()
+let edgePathUpdateTimer = null
 
 // 计算所有连接线（统一处理，不再区分部分内外）
 const crossChapterEdges = computed(() => {
@@ -1107,10 +1278,6 @@ const getNodeEdgePointCrossChapter = (sourcePos, targetPos) => {
   return { x: edgeX, y: edgeY }
 }
 
-// 边的路径缓存
-let edgePathCache = new Map()
-let edgePathUpdateTimer = null
-
 // 获取边的路径（使用贝塞尔曲线，从节点边缘开始）
 // 使用缓存和防抖优化性能
 const getEdgePath = (edge) => {
@@ -1170,14 +1337,43 @@ const calculateEdgePath = (edge) => {
   return `M ${sourceEdge.x} ${sourceEdge.y} Q ${controlX} ${controlY} ${targetEdge.x} ${targetEdge.y}`
 }
 
-// 获取边标签的位置
+// 获取边标签的位置（基于连接线的边缘点，计算贝塞尔曲线上的中点）
 const getEdgeLabelX = (edge) => {
   const sourcePos = getNodeAbsolutePosition(edge.source)
   const targetPos = getNodeAbsolutePosition(edge.target)
   
   if (!sourcePos || !targetPos) return 0
   
-  return (sourcePos.x + targetPos.x) / 2
+  // 获取源节点和目标节点的边缘点（与连接线计算保持一致）
+  const sourceEdge = getNodeEdgePointCrossChapter(sourcePos, targetPos)
+  const targetEdge = getNodeEdgePointCrossChapter(targetPos, sourcePos)
+  
+  if (!sourceEdge || !targetEdge) {
+    // 如果无法获取边缘点，回退到节点中心
+    return (sourcePos.x + targetPos.x) / 2
+  }
+  
+  // 计算连接线的参数（与 calculateEdgePath 保持一致）
+  const dx = targetEdge.x - sourceEdge.x
+  const dy = targetEdge.y - sourceEdge.y
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  
+  if (distance === 0) {
+    return sourceEdge.x
+  }
+  
+  // 计算控制点（与 calculateEdgePath 保持一致）
+  const controlX = sourceEdge.x + dx / 2
+  const curveAmount = Math.min(Math.abs(dx) * 0.4, distance * 0.35)
+  const controlY = sourceEdge.y + dy / 2 - curveAmount
+  
+  // 计算贝塞尔曲线在 t=0.5 时的点（曲线中点）
+  // 对于二次贝塞尔曲线 Q: P(t) = (1-t)²P₀ + 2(1-t)tP₁ + t²P₂
+  // 当 t=0.5 时: P(0.5) = 0.25P₀ + 0.5P₁ + 0.25P₂
+  const t = 0.5
+  const labelX = (1 - t) * (1 - t) * sourceEdge.x + 2 * (1 - t) * t * controlX + t * t * targetEdge.x
+  
+  return labelX
 }
 
 const getEdgeLabelY = (edge) => {
@@ -1186,18 +1382,44 @@ const getEdgeLabelY = (edge) => {
   
   if (!sourcePos || !targetPos) return 0
   
-  const dy = targetPos.y - sourcePos.y
-  const dx = targetPos.x - sourcePos.x
+  // 获取源节点和目标节点的边缘点（与连接线计算保持一致）
+  const sourceEdge = getNodeEdgePointCrossChapter(sourcePos, targetPos)
+  const targetEdge = getNodeEdgePointCrossChapter(targetPos, sourcePos)
+  
+  if (!sourceEdge || !targetEdge) {
+    // 如果无法获取边缘点，回退到节点中心
+    const dy = targetPos.y - sourcePos.y
+    const dx = targetPos.x - sourcePos.x
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    const curveAmount = Math.min(Math.abs(dx) * 0.4, distance * 0.35)
+    return (sourcePos.y + targetPos.y) / 2 - curveAmount - 8
+  }
+  
+  // 计算连接线的参数（与 calculateEdgePath 保持一致）
+  const dx = targetEdge.x - sourceEdge.x
+  const dy = targetEdge.y - sourceEdge.y
   const distance = Math.sqrt(dx * dx + dy * dy)
   
-  // 标签位置在曲线中间，根据弧度调整偏移
+  if (distance === 0) {
+    return sourceEdge.y
+  }
+  
+  // 计算控制点（与 calculateEdgePath 保持一致）
+  const controlX = sourceEdge.x + dx / 2
   const curveAmount = Math.min(Math.abs(dx) * 0.4, distance * 0.35)
-  let labelY = (sourcePos.y + targetPos.y) / 2 - curveAmount - 8
+  const controlY = sourceEdge.y + dy / 2 - curveAmount
+  
+  // 计算贝塞尔曲线在 t=0.5 时的点（曲线中点）
+  // 对于二次贝塞尔曲线 Q: P(t) = (1-t)²P₀ + 2(1-t)tP₁ + t²P₂
+  // 当 t=0.5 时: P(0.5) = 0.25P₀ + 0.5P₁ + 0.25P₂
+  const t = 0.5
+  let labelY = (1 - t) * (1 - t) * sourceEdge.y + 2 * (1 - t) * t * controlY + t * t * targetEdge.y
   
   // 标签尺寸
   const labelHeight = 24
   const labelWidth = 80
-  const labelX = (sourcePos.x + targetPos.x) / 2
+  // 使用贝塞尔曲线中点计算 labelX，与 getEdgeLabelX 保持一致
+  const labelX = getEdgeLabelX(edge)
   
   // 检测标签是否与节点重叠
   const labelTop = labelY - labelHeight / 2
@@ -1376,12 +1598,6 @@ const getEdgeLabelY = (edge) => {
   
   return labelY
 }
-
-// 拖拽状态
-const isDraggingNode = ref(false)
-const draggingNodeId = ref(null)
-let edgePathCache = new Map()
-let edgePathUpdateTimer = null
 
 // 处理节点拖拽事件
 const handleNodeDragging = ({ nodeId, x, y }) => {
@@ -1622,6 +1838,12 @@ watch(() => projectData.chapters?.length, () => {
     if (canvasContainer.value) {
       debouncedUpdateCanvasSize()
     }
+    // 清除缓存并触发连接线更新
+    nodeLocationCache.clear()
+    edgePathCache.clear()
+    setTimeout(() => {
+      edgeUpdateTrigger.value++
+    }, 150)
   })
 })
 
@@ -1631,7 +1853,26 @@ watch(() => projectData.edges?.length, () => {
     if (canvasContainer.value) {
       debouncedUpdateCanvasSize()
     }
+    // 清除缓存并触发连接线更新
+    nodeLocationCache.clear()
+    edgePathCache.clear()
+    cachedCrossEdges = []
+    cachedEdgesHash = ''
+    setTimeout(() => {
+      edgeUpdateTrigger.value++
+    }, 150)
   })
 })
+
+// 深度监听章节数据变化，确保连接线及时更新
+watch(() => projectData.chapters, () => {
+  nextTick(() => {
+    // 延迟触发，确保 DOM 已完全渲染
+    setTimeout(() => {
+      edgeUpdateTrigger.value++
+    }, 200)
+  })
+}, { deep: true })
 </script>
+
 

@@ -73,7 +73,7 @@
         <!-- Nodes Container -->
         <div 
           class="relative" 
-          style="min-height: 80px; position: relative;"
+          :style="getSectionContainerStyle(section)"
           :ref="el => setSectionContainerRef(section.id, el)"
         >
           <!-- Nodes -->
@@ -421,8 +421,13 @@ const handleNodeClick = (nodeId, event) => {
   if (event && event.detail === 2) {
     return
   }
-  // 使用 nextTick 确保事件正确传递
-  emit('node-click', nodeId, event)
+  
+  // 如果按住 Ctrl 键，才传递点击事件（用于连接功能）
+  // 普通左键点击不传递，避免与拖拽冲突
+  if (event && (event.ctrlKey || event.metaKey)) {
+    // 使用 nextTick 确保事件正确传递
+    emit('node-click', nodeId, event)
+  }
 }
 
 const handleNodeDoubleClick = (nodeId) => {
@@ -446,36 +451,116 @@ const setSectionContainerRef = (sectionId, el) => {
   }
 }
 
-// 获取节点样式（绝对定位）
-const getNodeStyle = (node, sectionId) => {
-  const container = sectionContainerRefs.value[sectionId]
-  if (!container) {
-    // 如果容器还没准备好，使用默认位置（水平排列）
-    const index = props.chapter.sections.find(s => s.id === sectionId)?.nodes.findIndex(n => n.id === node.id) || 0
-    return {
-      left: `${index * 200}px`,
-      top: '0px'
-    }
+// 获取 section 容器样式（确保高度足够容纳所有节点）
+const getSectionContainerStyle = (section) => {
+  let minHeight = '80px'
+  
+  // 计算所有节点的最大 y 坐标，确保容器高度足够（支持自动换行）
+  if (section.nodes && section.nodes.length > 0) {
+    const nodeWidth = 180 // 节点默认宽度
+    const nodeHeight = 70 // 节点默认高度
+    const horizontalSpacing = 100 // 水平间距（大于100px）
+    const verticalSpacing = 20 // 垂直间距
+    
+    // 获取容器宽度（如果容器还没准备好，使用默认值）
+    const container = sectionContainerRefs.value[section.id]
+    const containerWidth = container ? container.clientWidth : 800 // 默认800px
+    const availableWidth = containerWidth - 40 // 减去左右padding
+    
+    // 计算每行可以放多少个节点
+    const nodesPerRow = Math.floor((availableWidth + horizontalSpacing) / (nodeWidth + horizontalSpacing))
+    const actualNodesPerRow = Math.max(1, nodesPerRow) // 至少1个
+    
+    // 使用 position 字段排序
+    const sortedNodes = [...section.nodes].sort((a, b) => {
+      const posA = a.position != null ? a.position : section.nodes.findIndex(n => n.id === a.id)
+      const posB = b.position != null ? b.position : section.nodes.findIndex(n => n.id === b.id)
+      return posA - posB
+    })
+    
+    let maxY = 0
+    
+    sortedNodes.forEach((node, index) => {
+      if (node.x != null && node.y != null) {
+        // 使用保存的位置
+        maxY = Math.max(maxY, node.y + nodeHeight)
+      } else {
+        // 使用默认位置计算（自动换行）
+        const row = Math.floor(index / actualNodesPerRow)
+        const defaultY = row * (nodeHeight + verticalSpacing)
+        maxY = Math.max(maxY, defaultY + nodeHeight)
+      }
+    })
+    
+    minHeight = `${Math.max(maxY + 20, 80)}px` // 至少 80px，加上一些边距
   }
   
-  // 如果节点有保存的位置，使用保存的位置
-  if (node.x !== null && node.x !== undefined && node.y !== null && node.y !== undefined) {
+  return {
+    minHeight: minHeight,
+    position: 'relative',
+    width: '100%'
+  }
+}
+
+// 获取节点样式（绝对定位）
+const getNodeStyle = (node, sectionId) => {
+  // 如果节点有保存的位置（x 和 y 都不为空），使用保存的位置
+  if (node.x != null && node.y != null) {
     return {
       left: `${node.x}px`,
       top: `${node.y}px`
     }
   }
   
-  // 否则使用默认位置（水平排列）
-  const index = props.chapter.sections.find(s => s.id === sectionId)?.nodes.findIndex(n => n.id === node.id) || 0
+  // 否则使用默认位置（按 position 排序，自动换行，间隔大于100px）
+  const section = props.chapter.sections.find(s => s.id === sectionId)
+  if (!section) {
+    return { left: '0px', top: '0px' }
+  }
+  
+  // 使用 position 字段排序，如果没有则使用索引
+  const sortedNodes = [...section.nodes].sort((a, b) => {
+    const posA = a.position != null ? a.position : section.nodes.findIndex(n => n.id === a.id)
+    const posB = b.position != null ? b.position : section.nodes.findIndex(n => n.id === b.id)
+    return posA - posB
+  })
+  
+  const nodeIndex = sortedNodes.findIndex(n => n.id === node.id)
+  const nodeWidth = 180 // 节点默认宽度
+  const nodeHeight = 70 // 节点默认高度
+  const horizontalSpacing = 100 // 水平间距（大于100px）
+  const verticalSpacing = 20 // 垂直间距
+  
+  // 获取容器宽度（如果容器还没准备好，使用默认值）
+  const container = sectionContainerRefs.value[sectionId]
+  const containerWidth = container ? container.clientWidth : 800 // 默认800px
+  const availableWidth = containerWidth - 40 // 减去左右padding
+  
+  // 计算每行可以放多少个节点
+  const nodesPerRow = Math.floor((availableWidth + horizontalSpacing) / (nodeWidth + horizontalSpacing))
+  const actualNodesPerRow = Math.max(1, nodesPerRow) // 至少1个
+  
+  // 计算节点所在的行和列
+  const row = Math.floor(nodeIndex / actualNodesPerRow)
+  const col = nodeIndex % actualNodesPerRow
+  
+  // 计算默认位置：自动换行
+  const defaultX = col * (nodeWidth + horizontalSpacing)
+  const defaultY = row * (nodeHeight + verticalSpacing)
+  
   return {
-    left: `${index * 200}px`,
-    top: '0px'
+    left: `${defaultX}px`,
+    top: `${defaultY}px`
   }
 }
 
 // 鼠标拖拽处理
 const handleMouseDown = (event, nodeId, index, sectionId) => {
+  // 如果按住 Ctrl 键，不触发拖拽（用于连接功能）
+  if (event.ctrlKey || event.metaKey) {
+    return
+  }
+  
   // 如果点击的是按钮，不触发拖拽
   if (event.target.closest('button') || event.target.closest('i')) {
     return

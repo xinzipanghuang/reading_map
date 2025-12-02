@@ -5,6 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 export const api = {
   getProjects: () => axios.get(`${API_URL}/projects`),
   createProject: (name) => axios.post(`${API_URL}/projects`, { name }),
+  updateProject: (projectId, name) => axios.put(`${API_URL}/projects/${projectId}`, { name }),
+  deleteProject: (projectId) => axios.delete(`${API_URL}/projects/${projectId}`),
   getProject: (id) => axios.get(`${API_URL}/projects/${id}`),
   addChapter: (projectId, chapterName) => 
     axios.post(`${API_URL}/projects/${projectId}/chapters`, { chapter_name: chapterName }),
@@ -43,6 +45,22 @@ export const api = {
       y: y
     }),
   analyzeGraph: (projectId, focusNode) => 
-    axios.get(`${API_URL}/projects/${projectId}/graph_analysis?focus_node=${focusNode}`)
+    axios.get(`${API_URL}/projects/${projectId}/graph_analysis?focus_node=${focusNode}`),
+  exportProject: (projectId) =>
+    axios.get(`${API_URL}/projects/${projectId}/export`, {
+      responseType: 'blob'
+    }),
+  importProject: (file, projectName) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (projectName) {
+      formData.append('project_name', projectName)
+    }
+    return axios.post(`${API_URL}/projects/import`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  }
 }
 
