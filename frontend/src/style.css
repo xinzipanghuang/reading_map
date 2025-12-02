@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #f1f5f9;
+  margin: 0;
+  padding: 0;
+}
+
+.node-chip {
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.node-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.node-chip.selected {
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+#network-container {
+  height: 600px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+.section-row {
+  background: #f8fafc;
+  border-left: 3px solid #3b82f6;
+}
+

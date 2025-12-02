@@ -1,0 +1,19 @@
+# npm 代理配置示例
+# 复制此文件为 .npmrc 并修改为你的代理设置
+
+# HTTP 代理
+# proxy=http://proxy.example.com:8080
+
+# HTTPS 代理
+# https-proxy=http://proxy.example.com:8080
+
+# 不使用代理的域名（可选）
+# no-proxy=localhost,127.0.0.1,*.local
+
+# 如果需要认证
+# proxy=http://username:password@proxy.example.com:8080
+# https-proxy=http://username:password@proxy.example.com:8080
+
+# 国内镜像源（如果使用）
+# registry=https://registry.npmmirror.com
+
