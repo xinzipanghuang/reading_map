@@ -1,25 +1,38 @@
 <template>
   <div
     :class="[
-      'relative p-3 rounded-2xl border-2 bg-opacity-30 transition',
-      chapterColor.border,
-      chapterColor.bg
+      'relative p-3 rounded-2xl border-2 transition',
+      isHexColor(chapterColor.border) ? '' : chapterColor.border,
+      isHexColor(chapterColor.bg) ? '' : chapterColor.bg
     ]"
+    :style="{
+      borderColor: isHexColor(chapterColor.border) ? chapterColor.border : undefined,
+      backgroundColor: isHexColor(chapterColor.bg) ? `${chapterColor.bg}30` : undefined
+    }"
     :data-chapter-id="chapter.id"
   >
     <!-- Chapter Badge -->
     <div
       :class="[
         'absolute -left-3 top-6 px-2 py-1 text-xs font-bold rounded shadow-sm',
-        chapterColor.badgeBg,
-        chapterColor.badgeText
+        isHexColor(chapterColor.badgeBg) ? '' : chapterColor.badgeBg,
+        isHexColor(chapterColor.badgeText) ? '' : chapterColor.badgeText
       ]"
+      :style="{
+        backgroundColor: isHexColor(chapterColor.badgeBg) ? chapterColor.badgeBg : undefined,
+        color: isHexColor(chapterColor.badgeText) ? chapterColor.badgeText : undefined
+      }"
     >
       {{ chapterIndex }}
     </div>
 
     <!-- Chapter Header -->
-    <div :class="['flex items-center justify-between mb-2', chapterColor.text]">
+    <div 
+      :class="['flex items-center justify-between mb-2', isHexColor(chapterColor.chapterText || chapterColor.text) ? '' : (chapterColor.chapterText || chapterColor.text)]"
+      :style="{
+        color: isHexColor(chapterColor.chapterText || chapterColor.text) ? (chapterColor.chapterText || chapterColor.text) : undefined
+      }"
+    >
       <h2 class="text-lg font-bold flex items-center gap-2">
         <i :class="[chapterIcon, 'text-lg']"></i>
         {{ chapter.name }}
@@ -50,8 +63,14 @@
         class="bg-white p-2 rounded-lg border border-gray-200 shadow-sm"
       >
         <!-- Section Header -->
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="font-medium text-gray-700 text-sm">{{ section.name }}</h3>
+        <div 
+          class="flex items-center justify-between mb-2"
+          :class="isHexColor(chapterColor.text) ? '' : chapterColor.text"
+          :style="{
+            color: isHexColor(chapterColor.text) ? chapterColor.text : undefined
+          }"
+        >
+          <h3 class="font-medium text-sm">{{ section.name }}</h3>
           <div class="flex gap-2">
             <button
               @click="showAddNodeModal(section.id)"
@@ -75,6 +94,7 @@
           class="relative" 
           :style="getSectionContainerStyle(section)"
           :ref="el => setSectionContainerRef(section.id, el)"
+          :key="`container-${section.id}-${containerStyleKey}`"
         >
           <!-- Nodes -->
           <div
@@ -83,9 +103,10 @@
             :ref="el => setNodeRef(node.id, el, idx, section.id)"
             :data-node-id="node.id"
             :class="[
-              'absolute transition-all duration-200 ease-out z-10',
-              draggingNodeId === node.id ? 'opacity-50 scale-95 cursor-grabbing' : 'cursor-grab',
-              !draggingNodeId ? 'hover:shadow-lg' : ''
+              'absolute z-10',
+              draggingNodeId === node.id 
+                ? 'opacity-50 scale-95 cursor-grabbing' 
+                : 'cursor-grab transition-all duration-200 ease-out hover:shadow-lg'
             ]"
             :style="getNodeStyle(node, section.id)"
             @mousedown="(e) => handleMouseDown(e, node.id, idx, section.id)"
@@ -95,6 +116,8 @@
               :subtitle="node.content || ''"
               :color="getColorForChapter(chapterIndex - 1)"
               :icon="getIconForChapter(chapterIndex - 1)"
+              :text-color="isHexColor(chapterColor.text) ? chapterColor.text : undefined"
+              :text-color-class="!isHexColor(chapterColor.text) ? chapterColor.text : undefined"
               :is-selected="isNodeSelected(node.id) || isNodeInLink(node.id)"
               :class="getLinkStatusClass(node.id)"
               @click="(e) => handleNodeClick(node.id, e)"
@@ -232,6 +255,15 @@ const props = defineProps({
   projectId: {
     type: String,
     required: true
+  },
+  colorScheme: {
+    type: String,
+    default: 'seaborn-set2',
+    validator: (value) => [
+      'default', 'seaborn-set1', 'seaborn-set2', 'seaborn-set3',
+      'seaborn-pastel1', 'seaborn-pastel2', 'seaborn-dark2',
+      'seaborn-accent', 'seaborn-paired', 'seaborn-spectral'
+    ].includes(value)
   }
 })
 
@@ -266,49 +298,164 @@ const dragOffset = ref({ x: 0, y: 0 })
 const isDragging = ref(false)
 const dragAnimationFrame = ref(null)
 
-const chapterColors = [
+// 当前颜色方案（保留作为备选）
+const chapterColorsDefault = [
   {
     border: 'border-blue-200',
     bg: 'bg-blue-50',
-    text: 'text-blue-800',
+    text: 'text-gray-700', // 用于 section 和 node 标题，使用柔和的灰色
+    chapterText: 'text-gray-700', // 用于章节标题，使用柔和的灰色
     badgeBg: 'bg-blue-100',
     badgeText: 'text-blue-700'
   },
   {
     border: 'border-orange-200',
     bg: 'bg-orange-50',
-    text: 'text-orange-800',
+    text: 'text-gray-700',
+    chapterText: 'text-gray-700',
     badgeBg: 'bg-orange-100',
     badgeText: 'text-orange-700'
   },
   {
     border: 'border-green-200',
     bg: 'bg-green-50',
-    text: 'text-green-800',
+    text: 'text-gray-700',
+    chapterText: 'text-gray-700',
     badgeBg: 'bg-green-100',
     badgeText: 'text-green-700'
   },
   {
     border: 'border-purple-200',
     bg: 'bg-purple-50',
-    text: 'text-purple-800',
+    text: 'text-gray-700',
+    chapterText: 'text-gray-700',
     badgeBg: 'bg-purple-100',
     badgeText: 'text-purple-700'
   },
   {
     border: 'border-indigo-200',
     bg: 'bg-indigo-50',
-    text: 'text-indigo-800',
+    text: 'text-gray-700',
+    chapterText: 'text-gray-700',
     badgeBg: 'bg-indigo-100',
     badgeText: 'text-indigo-700'
   }
 ]
 
+// 辅助函数：从十六进制颜色生成颜色配置
+const createColorConfig = (hexColors) => {
+  return hexColors.map(hex => {
+    // 计算对比色（深色文字或白色文字）
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000
+    
+    // 由于章节背景色只有 30% 透明度，即使是深色也会变得很浅
+    // 所以章节标题也始终使用深色文字，确保在任何情况下都能看清楚
+    const chapterTextColor = '#1a1a1a' // 始终使用深色
+    
+    // section 和 node 标题始终使用深色（因为它们在白色背景上）
+    const sectionNodeTextColor = '#1a1a1a' // 始终使用深色，确保在白色背景上可读
+    
+    // badge 文字可以使用对比色，因为 badge 背景是实色（100% 不透明）
+    const badgeTextColor = brightness > 128 ? '#1a1a1a' : '#ffffff'
+    
+    return {
+      border: hex,
+      bg: hex,
+      text: sectionNodeTextColor, // 用于 section 和 node 标题（白色背景），始终使用深色
+      chapterText: chapterTextColor, // 用于章节标题（章节背景），始终使用深色
+      badgeBg: hex,
+      badgeText: badgeTextColor // badge 文字使用对比色（因为背景是实色）
+    }
+  })
+}
+
+// Seaborn Set1 颜色方案（9种颜色）
+const chapterColorsSeabornSet1 = createColorConfig([
+  '#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00',
+  '#ffff33', '#a65628', '#f781bf', '#999999'
+])
+
+// Seaborn Set2 颜色方案（8种颜色）
+const chapterColorsSeabornSet2 = createColorConfig([
+  '#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854',
+  '#ffd92f', '#e5c494', '#b3b3b3'
+])
+
+// Seaborn Set3 颜色方案（12种颜色）
+const chapterColorsSeabornSet3 = createColorConfig([
+  '#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3',
+  '#fdb462', '#b3de69', '#fccde5', '#d9d9d9', '#bc80bd',
+  '#ccebc5', '#ffed6f'
+])
+
+// Seaborn Pastel1 颜色方案（9种颜色）
+const chapterColorsSeabornPastel1 = createColorConfig([
+  '#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4', '#fed9a6',
+  '#ffffcc', '#e5d8bd', '#fddaec', '#f2f2f2'
+])
+
+// Seaborn Pastel2 颜色方案（8种颜色）
+const chapterColorsSeabornPastel2 = createColorConfig([
+  '#b3e2cd', '#fdcdac', '#cbd5e8', '#f4cae4', '#e6f5c9',
+  '#fff2ae', '#f1e2cc', '#cccccc'
+])
+
+// Seaborn Dark2 颜色方案（8种颜色）
+const chapterColorsSeabornDark2 = createColorConfig([
+  '#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e',
+  '#e6ab02', '#a6761d', '#666666'
+])
+
+// Seaborn Accent 颜色方案（8种颜色）
+const chapterColorsSeabornAccent = createColorConfig([
+  '#7fc97f', '#beaed4', '#fdc086', '#ffff99', '#386cb0',
+  '#f0027f', '#bf5b17', '#666666'
+])
+
+// Seaborn Paired 颜色方案（12种颜色）
+const chapterColorsSeabornPaired = createColorConfig([
+  '#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99',
+  '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a',
+  '#ffff99', '#b15928'
+])
+
+// Seaborn Spectral 颜色方案（11种颜色，发散色）
+const chapterColorsSeabornSpectral = createColorConfig([
+  '#9e0142', '#d53e4f', '#f46d43', '#fdae61', '#fee08b',
+  '#ffffbf', '#e6f598', '#abdda4', '#66c2a5', '#3288bd',
+  '#5e4fa2'
+])
+
 const chapterIcons = ['ph-brain', 'ph-calculator', 'ph-sparkle', 'ph-sigma', 'ph-sparkle']
 
+// 判断是否为十六进制颜色值
+const isHexColor = (color) => {
+  return typeof color === 'string' && color.startsWith('#')
+}
+
+// 根据颜色方案选择颜色数组
+const chapterColors = computed(() => {
+  const schemeMap = {
+    'default': chapterColorsDefault,
+    'seaborn-set1': chapterColorsSeabornSet1,
+    'seaborn-set2': chapterColorsSeabornSet2,
+    'seaborn-set3': chapterColorsSeabornSet3,
+    'seaborn-pastel1': chapterColorsSeabornPastel1,
+    'seaborn-pastel2': chapterColorsSeabornPastel2,
+    'seaborn-dark2': chapterColorsSeabornDark2,
+    'seaborn-accent': chapterColorsSeabornAccent,
+    'seaborn-paired': chapterColorsSeabornPaired,
+    'seaborn-spectral': chapterColorsSeabornSpectral
+  }
+  return schemeMap[props.colorScheme] || chapterColorsDefault
+})
+
 const chapterColor = computed(() => {
-  const index = (props.chapterIndex - 1) % chapterColors.length
-  return chapterColors[index]
+  const index = (props.chapterIndex - 1) % chapterColors.value.length
+  return chapterColors.value[index]
 })
 
 const chapterIcon = computed(() => {
@@ -453,11 +600,14 @@ const setSectionContainerRef = (sectionId, el) => {
 
 // 获取 section 容器样式（确保高度足够容纳所有节点）
 const getSectionContainerStyle = (section) => {
+  // 使用 containerStyleKey 来触发重新计算
+  const _ = containerStyleKey.value
+  
   let minHeight = '80px'
   
-  // 计算所有节点的最大 y 坐标，确保容器高度足够（支持自动换行）
+  // 计算所有节点的最大 y 坐标，确保容器高度足够（支持自动换行，高度不限制）
   if (section.nodes && section.nodes.length > 0) {
-    const nodeWidth = 180 // 节点默认宽度
+    const nodeMaxWidth = 300 // 节点最大宽度（与 KnowledgeCard 的 max-w-[300px] 一致）
     const nodeHeight = 70 // 节点默认高度
     const horizontalSpacing = 100 // 水平间距（大于100px）
     const verticalSpacing = 20 // 垂直间距
@@ -467,8 +617,8 @@ const getSectionContainerStyle = (section) => {
     const containerWidth = container ? container.clientWidth : 800 // 默认800px
     const availableWidth = containerWidth - 40 // 减去左右padding
     
-    // 计算每行可以放多少个节点
-    const nodesPerRow = Math.floor((availableWidth + horizontalSpacing) / (nodeWidth + horizontalSpacing))
+    // 计算每行可以放多少个节点（使用最大宽度作为计算基准）
+    const nodesPerRow = Math.floor((availableWidth + horizontalSpacing) / (nodeMaxWidth + horizontalSpacing))
     const actualNodesPerRow = Math.max(1, nodesPerRow) // 至少1个
     
     // 使用 position 字段排序
@@ -481,24 +631,38 @@ const getSectionContainerStyle = (section) => {
     let maxY = 0
     
     sortedNodes.forEach((node, index) => {
+      // 尝试获取节点的实际高度（如果节点已经渲染）
+      let actualNodeHeight = nodeHeight // 默认高度
+      const nodeElement = nodeRefs.value[`${section.id}-${node.id}`]
+      if (nodeElement) {
+        const rect = nodeElement.getBoundingClientRect()
+        actualNodeHeight = Math.max(rect.height || nodeHeight, 70) // 至少70px
+      } else {
+        // 如果节点还没渲染，使用估算值（考虑内容可能换行）
+        actualNodeHeight = 100 // 估算节点可能的最大高度（考虑内容换行）
+      }
+      
       if (node.x != null && node.y != null) {
-        // 使用保存的位置
-        maxY = Math.max(maxY, node.y + nodeHeight)
+        // 使用保存的位置，加上实际节点高度
+        maxY = Math.max(maxY, node.y + actualNodeHeight)
       } else {
         // 使用默认位置计算（自动换行）
         const row = Math.floor(index / actualNodesPerRow)
         const defaultY = row * (nodeHeight + verticalSpacing)
-        maxY = Math.max(maxY, defaultY + nodeHeight)
+        maxY = Math.max(maxY, defaultY + actualNodeHeight)
       }
     })
     
-    minHeight = `${Math.max(maxY + 20, 80)}px` // 至少 80px，加上一些边距
+    // 使用 minHeight 允许容器根据内容自动扩展，确保包含所有节点
+    minHeight = `${Math.max(maxY + 40, 80)}px` // 至少 80px，加上足够的边距（40px）
   }
   
   return {
     minHeight: minHeight,
     position: 'relative',
-    width: '100%'
+    width: '100%',
+    overflow: 'visible', // 确保节点不会被裁剪
+    // 不设置 maxHeight，允许容器根据内容无限扩展
   }
 }
 
@@ -526,7 +690,8 @@ const getNodeStyle = (node, sectionId) => {
   })
   
   const nodeIndex = sortedNodes.findIndex(n => n.id === node.id)
-  const nodeWidth = 180 // 节点默认宽度
+  const nodeMaxWidth = 300 // 节点最大宽度（与 KnowledgeCard 的 max-w-[300px] 一致）
+  const nodeMinWidth = 180 // 节点最小宽度（与 KnowledgeCard 的 min-w-[180px] 一致）
   const nodeHeight = 70 // 节点默认高度
   const horizontalSpacing = 100 // 水平间距（大于100px）
   const verticalSpacing = 20 // 垂直间距
@@ -536,22 +701,31 @@ const getNodeStyle = (node, sectionId) => {
   const containerWidth = container ? container.clientWidth : 800 // 默认800px
   const availableWidth = containerWidth - 40 // 减去左右padding
   
-  // 计算每行可以放多少个节点
-  const nodesPerRow = Math.floor((availableWidth + horizontalSpacing) / (nodeWidth + horizontalSpacing))
+  // 计算每行可以放多少个节点（使用最大宽度作为计算基准，确保有足够空间）
+  const nodesPerRow = Math.floor((availableWidth + horizontalSpacing) / (nodeMaxWidth + horizontalSpacing))
   const actualNodesPerRow = Math.max(1, nodesPerRow) // 至少1个
   
   // 计算节点所在的行和列
   const row = Math.floor(nodeIndex / actualNodesPerRow)
   const col = nodeIndex % actualNodesPerRow
   
-  // 计算默认位置：自动换行
-  const defaultX = col * (nodeWidth + horizontalSpacing)
+  // 计算默认位置：自动换行（使用最大宽度作为间距基准）
+  const defaultX = col * (nodeMaxWidth + horizontalSpacing)
   const defaultY = row * (nodeHeight + verticalSpacing)
   
   return {
     left: `${defaultX}px`,
     top: `${defaultY}px`
   }
+}
+
+// 拖曳性能优化：缓存容器和节点尺寸
+const dragCache = {
+  containerRect: null,
+  nodeWidth: null,
+  nodeHeight: null,
+  containerWidth: null,
+  containerHeight: null
 }
 
 // 鼠标拖拽处理
@@ -574,11 +748,18 @@ const handleMouseDown = (event, nodeId, index, sectionId) => {
   const container = sectionContainerRefs.value[sectionId]
   if (!container) return
   
-  const containerRect = container.getBoundingClientRect()
   const nodeElement = nodeRefs.value[`${sectionId}-${nodeId}`]
   if (!nodeElement) return
   
+  // 缓存容器和节点尺寸（只在开始时计算一次）
+  const containerRect = container.getBoundingClientRect()
   const nodeRect = nodeElement.getBoundingClientRect()
+  
+  dragCache.containerRect = containerRect
+  dragCache.nodeWidth = nodeRect.width
+  dragCache.nodeHeight = nodeRect.height
+  dragCache.containerWidth = containerRect.width
+  dragCache.containerHeight = containerRect.height
   
   // 计算鼠标相对于节点的偏移
   dragOffset.value = {
@@ -591,59 +772,58 @@ const handleMouseDown = (event, nodeId, index, sectionId) => {
   dragStartSectionId.value = sectionId
   isDragging.value = true
   
-  // 添加全局事件监听
-  document.addEventListener('mousemove', handleMouseMove)
+  // 添加全局事件监听（使用 passive 优化）
+  document.addEventListener('mousemove', handleMouseMove, { passive: true })
   document.addEventListener('mouseup', handleMouseUp)
   
   // 防止文本选择
   event.preventDefault()
 }
 
+// 节流连接线更新（使用时间戳，每 50ms 更新一次）
+let lastConnectionUpdateTime = 0
+const CONNECTION_UPDATE_INTERVAL = 50 // 50ms
+
 const handleMouseMove = (event) => {
   if (!isDragging.value || !draggingNodeId.value) return
   
-  // 使用 requestAnimationFrame 优化性能
-  if (dragAnimationFrame.value) {
-    cancelAnimationFrame(dragAnimationFrame.value)
-  }
+  // 直接更新，不使用 requestAnimationFrame（mousemove 本身已经很快）
+  const sectionId = dragStartSectionId.value
   
-  dragAnimationFrame.value = requestAnimationFrame(() => {
-    const sectionId = dragStartSectionId.value
-    const container = sectionContainerRefs.value[sectionId]
-    if (!container) return
+  // 使用缓存的容器尺寸，避免频繁调用 getBoundingClientRect
+  if (!dragCache.containerRect) return
+  
+  const containerRect = dragCache.containerRect
+  
+  // 计算新位置（相对于容器）
+  const newX = event.clientX - containerRect.left - dragOffset.value.x
+  const newY = event.clientY - containerRect.top - dragOffset.value.y
+  
+  // 限制在容器内（使用缓存的节点尺寸）
+  const nodeWidth = dragCache.nodeWidth
+  const nodeHeight = dragCache.nodeHeight
+  
+  const minX = 0
+  const minY = 0
+  const maxX = dragCache.containerWidth - nodeWidth
+  const maxY = dragCache.containerHeight - nodeHeight
+  
+  const clampedX = Math.max(minX, Math.min(maxX, newX))
+  const clampedY = Math.max(minY, Math.min(maxY, newY))
+  
+  // 更新节点位置（立即更新UI）
+  const node = props.chapter.sections.find(s => s.id === sectionId)?.nodes.find(n => n.id === draggingNodeId.value)
+  if (node) {
+    node.x = clampedX
+    node.y = clampedY
     
-    const containerRect = container.getBoundingClientRect()
-    
-    // 计算新位置（相对于容器）
-    const newX = event.clientX - containerRect.left - dragOffset.value.x
-    const newY = event.clientY - containerRect.top - dragOffset.value.y
-    
-    // 限制在容器内
-    const nodeElement = nodeRefs.value[`${sectionId}-${draggingNodeId.value}`]
-    if (!nodeElement) return
-    
-    const nodeRect = nodeElement.getBoundingClientRect()
-    const nodeWidth = nodeRect.width
-    const nodeHeight = nodeRect.height
-    
-    const minX = 0
-    const minY = 0
-    const maxX = containerRect.width - nodeWidth
-    const maxY = containerRect.height - nodeHeight
-    
-    const clampedX = Math.max(minX, Math.min(maxX, newX))
-    const clampedY = Math.max(minY, Math.min(maxY, newY))
-    
-    // 更新节点位置（立即更新UI）
-    const node = props.chapter.sections.find(s => s.id === sectionId)?.nodes.find(n => n.id === draggingNodeId.value)
-    if (node) {
-      node.x = clampedX
-      node.y = clampedY
-      
-      // 通知父组件更新连接线（清除缓存并触发更新）
+    // 节流连接线更新：使用时间戳，每 50ms 更新一次
+    const now = Date.now()
+    if (now - lastConnectionUpdateTime >= CONNECTION_UPDATE_INTERVAL) {
+      lastConnectionUpdateTime = now
       emit('node-dragging', { nodeId: draggingNodeId.value, x: clampedX, y: clampedY })
     }
-  })
+  }
 }
 
 const handleMouseUp = async (event) => {
@@ -668,18 +848,26 @@ const handleMouseUp = async (event) => {
     }
   }
   
-  // 通知父组件拖拽结束，更新连接线
+  // 通知父组件拖拽结束，更新连接线（最终更新）
   emit('node-drag-end', { nodeId: draggingNodeId.value })
   
   // 清理
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
   
-  // 清理动画帧
+  // 清理动画帧（如果存在）
   if (dragAnimationFrame.value) {
     cancelAnimationFrame(dragAnimationFrame.value)
     dragAnimationFrame.value = null
   }
+  
+  // 清理缓存和重置时间戳
+  dragCache.containerRect = null
+  dragCache.nodeWidth = null
+  dragCache.nodeHeight = null
+  dragCache.containerWidth = null
+  dragCache.containerHeight = null
+  lastConnectionUpdateTime = 0
   
   draggingNodeId.value = null
   dragStartIndex.value = null
@@ -806,7 +994,10 @@ const setNodeRef = (nodeId, el, index, sectionId) => {
   }
 }
 
-// 监听节点变化，更新位置
+// 添加一个响应式变量来强制更新容器样式
+const containerStyleKey = ref(0)
+
+// 监听节点变化，更新位置和容器高度
 watch(() => props.chapter.sections, (sections) => {
   nextTick(() => {
     sections.forEach(section => {
@@ -818,8 +1009,27 @@ watch(() => props.chapter.sections, (sections) => {
         }
       })
     })
+    // 触发容器高度重新计算
+    containerStyleKey.value++
   })
 }, { deep: true, immediate: true })
+
+// 监听节点内容变化，更新容器高度
+watch(() => {
+  // 监听所有节点的内容变化
+  return props.chapter.sections.flatMap(s => s.nodes.map(n => ({
+    id: n.id,
+    name: n.name,
+    content: n.content,
+    x: n.x,
+    y: n.y
+  })))
+}, () => {
+  // 节点内容变化后，等待 DOM 更新，然后触发容器高度重新计算
+  nextTick(() => {
+    containerStyleKey.value++
+  })
+}, { deep: true })
 
 
 // 组件卸载时清理所有定时器

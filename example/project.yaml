@@ -1,0 +1,193 @@
+project:
+  id: reading_map_architecture
+  name: reading_map 项目技术逻辑图
+
+chapters:
+- id: ch1
+  name: 系统结构与核心组成
+  sections:
+  - id: sec1
+    name: 模块
+    nodes:
+    - id: node_model_yaml
+      name: YAML 数据模型
+      content: 负责载入/导出 project-chapter-section-node-edge 的结构数据
+
+    - id: node_frontend_ui
+      name: 前端可视化 UI
+      content: React/Canvas 类图编辑器，支持拖拽布局
+
+    - id: node_graph_engine
+      name: 图计算引擎
+      content: DAG 结构校验、节点布局、边渲染规则
+
+    - id: node_import_export
+      name: 导入/导出模块
+      content: 将 YAML ↔ 内存模型 ↔ 可视化节点之间同步
+
+    - id: node_state_manager
+      name: 状态管理器
+      content: 前端全局状态/项目状态/节点选择状态等
+
+    - id: node_store
+      name: 本地存储 LocalStore
+      content: 记录用户数据、最近编辑项目
+
+    - id: node_renderer
+      name: 渲染层 Renderer
+      content: 负责绘制节点、连线、布局、交互反馈
+
+
+- id: ch2
+  name: 数据结构逻辑
+  sections:
+  - id: sec2
+    name: 数据流
+    nodes:
+    - id: node_project
+      name: Project（项目）
+      content: 整体根对象
+
+    - id: node_chapter
+      name: Chapter（章节）
+      content: 大层级划分（时间、主题、人物等）
+
+    - id: node_section
+      name: Section（分节）
+      content: 小层级、逻辑分组
+
+    - id: node_node
+      name: Node（知识点）
+      content: 图中的“点”，有 name/content/id/position
+
+    - id: node_edge
+      name: Edge（关系）
+      content: 图中的“线”，source→target，代表依赖/关联
+
+
+- id: ch3
+  name: 数据流与操作流程
+  sections:
+  - id: sec3
+    name: 流程
+    nodes:
+    - id: node_load_yaml
+      name: 加载 YAML
+      content: 用户导入 YAML → 解析成 JS 对象
+
+    - id: node_build_graph
+      name: 构建图结构
+      content: 将 node/edge 映射到前端图组件
+
+    - id: node_user_edit
+      name: 用户编辑
+      content: 拖拽节点、增删改 node/edge，调整结构
+
+    - id: node_recompute_layout
+      name: 重新计算布局
+      content: 更新节点坐标、连线锚点、图形渲染
+
+    - id: node_save_yaml
+      name: 导出 YAML
+      content: 反序列化为 YAML；写回本地或上传
+
+
+- id: ch4
+  name: 图渲染与交互逻辑
+  sections:
+  - id: sec4
+    name: 图层逻辑
+    nodes:
+    - id: node_event_mouse
+      name: 鼠标事件
+      content: click / drag / select 等
+
+    - id: node_draw_node
+      name: 绘制节点
+      content: 绘制文本框/外框/颜色等 UI 元素
+
+    - id: node_draw_edge
+      name: 绘制边
+      content: 曲线/直线/箭头/标签
+
+    - id: node_hit_detection
+      name: 点击检测
+      content: 判断用户点到哪个 node/edge
+
+    - id: node_zoom_pan
+      name: 视图平移缩放
+      content: Canvas 或 SVG 的可视视窗控制
+
+
+- id: ch5
+  name: 完整系统运行流程（流程链）
+  sections:
+  - id: sec5
+    name: 流程链
+    nodes:
+    - id: node_start
+      name: 启动
+      content: 加载默认项目
+
+    - id: node_load
+      name: 加载项目文件
+      content: 解析 YAML → Project 对象
+
+    - id: node_render
+      name: 渲染图
+      content: 基于节点+边渲染
+
+    - id: node_edit
+      name: 编辑项目
+      content: 用户修改结构
+
+    - id: node_export
+      name: 导出更新后的 YAML
+      content: 持久化
+
+
+edges:
+  # 模块间逻辑
+  - source: node_model_yaml
+    target: node_import_export
+    label: 数据解析
+
+  - source: node_model_yaml
+    target: node_graph_engine
+    label: 构建 DAG 数据
+
+  - source: node_graph_engine
+    target: node_renderer
+    label: 图形结构 → 渲染
+
+  - source: node_frontend_ui
+    target: node_user_edit
+    label: UI 操作
+
+  - source: node_user_edit
+    target: node_recompute_layout
+    label: 编辑 → 更新布局
+
+  - source: node_recompute_layout
+    target: node_renderer
+    label: 新布局 → 重新渲染
+
+  - source: node_import_export
+    target: node_save_yaml
+    label: 输出保存
+
+  - source: node_project
+    target: node_chapter
+    label: 包含
+
+  - source: node_chapter
+    target: node_section
+    label: 包含
+
+  - source: node_section
+    target: node_node
+    label: 包含
+
+  - source: node_node
+    target: node_edge
+    label: 连接线来源（逻辑关系）

@@ -1,19 +1,28 @@
 <template>
   <div
     :class="[
-      'p-2 rounded-lg border-2 bg-white shadow-sm flex items-center space-x-2 min-w-[180px] cursor-pointer transition-all duration-200',
+      'p-2 rounded-lg border-2 bg-white shadow-sm flex items-start space-x-2 min-w-[180px] max-w-[300px] cursor-pointer transition-all duration-200',
       props.class || (isSelected ? 'ring-2 ring-blue-400 border-blue-500 bg-blue-50' : cardColor),
       !props.class && !isSelected ? 'hover:shadow-md' : ''
     ]"
     @click="handleClick"
     @dblclick="handleDoubleClick"
   >
-    <div :class="['p-1.5 rounded-full', iconBgColor]">
+    <div :class="['p-1.5 rounded-full flex-shrink-0', iconBgColor]">
       <i :class="[iconClass, iconColor]"></i>
     </div>
     <div class="flex-1 min-w-0">
-      <div class="font-bold text-gray-800 text-sm truncate">{{ title }}</div>
-      <div v-if="subtitle" class="text-xs text-gray-500 truncate">{{ subtitle }}</div>
+      <div 
+        class="font-bold text-sm break-words"
+        :class="textColorClass || (textColor ? '' : 'text-gray-800')"
+        :style="textColor && !textColorClass ? { color: textColor } : undefined"
+      >{{ title }}</div>
+      <div 
+        v-if="subtitle" 
+        class="text-xs break-words mt-1"
+        :class="textColorClass ? (textColorClass.includes('800') ? textColorClass.replace('800', '600') : textColorClass.replace(/\d+$/, '500')) : (textColor ? '' : 'text-gray-500')"
+        :style="textColor && !textColorClass ? { color: textColor, opacity: 0.7 } : undefined"
+      >{{ subtitle }}</div>
     </div>
     <div v-if="showActions" class="flex gap-1">
       <button
@@ -59,6 +68,14 @@ const props = defineProps({
   showActions: {
     type: Boolean,
     default: true
+  },
+  textColor: {
+    type: String,
+    default: null // 如果提供，使用提供的颜色（十六进制）；否则使用默认的 text-gray-800
+  },
+  textColorClass: {
+    type: String,
+    default: null // 如果提供，使用提供的 Tailwind 类名（如 text-blue-800）
   }
 })
 

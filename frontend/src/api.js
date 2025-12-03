@@ -1,6 +1,22 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// 自动检测 API URL：如果设置了环境变量则使用，否则根据当前页面 hostname 自动构建
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // 在开发环境中，使用当前页面的 hostname 和端口 8000
+  if (import.meta.env.DEV) {
+    const hostname = window.location.hostname
+    return `http://${hostname}:8000`
+  }
+  
+  // 生产环境使用当前页面的 origin
+  return window.location.origin.replace(/:\d+$/, ':8000')
+}
+
+const API_URL = getApiUrl()
 
 export const api = {
   getProjects: () => axios.get(`${API_URL}/projects`),

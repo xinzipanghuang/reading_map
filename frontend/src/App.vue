@@ -2,6 +2,7 @@
   <div class="flex h-screen bg-gray-50 overflow-hidden">
     <!-- Left Sidebar: Projects -->
     <ProjectSidebar
+      ref="sidebarRef"
       :projects="projects"
       :current-project-id="currentProjectId"
       @project-selected="handleProjectSelected"
@@ -11,46 +12,79 @@
     />
 
     <!-- Right Canvas: Knowledge Map -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden lg:ml-0">
     <!-- Header -->
-      <header class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-800">
-            {{ currentProject?.name || '知识图谱构建器' }}
-          </h1>
-          <p v-if="currentProject" class="text-sm text-gray-600 mt-1">
-            从直觉到综合：构建你的知识路径
-          </p>
-      </div>
-      <div class="flex items-center gap-4">
-          <!-- Import/Export Buttons -->
+      <header class="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <!-- Mobile Menu Button -->
           <button
-            @click="triggerImport"
-            class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-sm flex items-center gap-2"
-            title="从 YAML 导入项目"
+            @click="openSidebar"
+            class="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded transition"
+            title="打开菜单"
           >
-            <i class="ph ph-upload"></i>
-            导入 YAML
+            <i class="ph ph-list text-xl"></i>
           </button>
-          <input
+          <div class="min-w-0 flex-1">
+            <h1 class="text-xl lg:text-2xl font-bold text-gray-800 truncate">
+              {{ currentProject?.name || '知识图谱构建器' }}
+            </h1>
+            <p v-if="currentProject" class="text-xs lg:text-sm text-gray-600 mt-1 hidden lg:block">
+              从直觉到综合：构建你的知识路径
+            </p>
+          </div>
+      </div>
+      <div class="flex items-center gap-2 lg:gap-4 flex-shrink-0">
+          <!-- Color Scheme Selector -->
+          <div class="hidden md:flex items-center gap-2">
+            <label class="text-sm text-gray-600 flex items-center gap-1">
+              <i class="ph ph-palette"></i>
+              <span class="hidden lg:inline">配色方案:</span>
+            </label>
+        <select 
+              v-model="colorScheme"
+              class="px-2 lg:px-3 py-1.5 border border-gray-300 rounded-lg text-xs lg:text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+        >
+              <option value="default">默认 (Tailwind)</option>
+              <option value="seaborn-set1">Seaborn Set1</option>
+              <option value="seaborn-set2">Seaborn Set2</option>
+              <option value="seaborn-set3">Seaborn Set3</option>
+              <option value="seaborn-pastel1">Seaborn Pastel1</option>
+              <option value="seaborn-pastel2">Seaborn Pastel2</option>
+              <option value="seaborn-dark2">Seaborn Dark2</option>
+              <option value="seaborn-accent">Seaborn Accent</option>
+              <option value="seaborn-paired">Seaborn Paired</option>
+              <option value="seaborn-spectral">Seaborn Spectral</option>
+        </select>
+          </div>
+          
+          <!-- Import/Export Buttons -->
+        <button 
+            @click="triggerImport"
+            class="px-2 lg:px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-xs lg:text-sm flex items-center gap-1 lg:gap-2"
+            title="从 YAML 导入项目"
+        >
+            <i class="ph ph-upload"></i>
+            <span class="hidden sm:inline">导入 YAML</span>
+        </button>
+            <input 
             ref="fileInput"
             type="file"
             accept=".yaml,.yml"
             style="display: none"
             @change="handleFileImport"
           />
-          <button
+            <button 
             v-if="currentProjectId"
             @click="exportProject"
-            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm flex items-center gap-2"
+            class="px-2 lg:px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs lg:text-sm flex items-center gap-1 lg:gap-2"
             title="导出为 YAML"
-          >
+            >
             <i class="ph ph-download"></i>
-            导出 YAML
-          </button>
-          
+            <span class="hidden sm:inline">导出 YAML</span>
+            </button>
+
           <!-- Link Mode Status -->
-          <div
+          <div 
             v-if="linkMode.source"
             class="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 flex items-center gap-3 text-sm"
           >
@@ -58,17 +92,17 @@
             <i class="ph ph-arrow-right text-gray-400"></i>
             <span v-if="!linkMode.target" class="text-gray-400">选择终点...</span>
             <span v-else class="font-bold text-green-600">{{ getNodeName(linkMode.target) }}</span>
-        <button 
+              <button 
               v-if="linkMode.target"
               @click="createEdge"
               class="ml-2 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition text-xs"
-        >
+              >
               连接
             </button>
             <button @click="resetLinkMode" class="text-gray-400 hover:text-gray-600">
               <i class="ph ph-x"></i>
-        </button>
-          </div>
+              </button>
+            </div>
           <div v-else class="text-sm text-gray-500">
             按住 Ctrl + 左键点击节点开始创建连接 | 双击节点查看 DAG
           </div>
@@ -311,14 +345,14 @@
               <button 
               @click="addChapter"
               class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-            >
+              >
               添加章节
               </button>
           </div>
         </div>
 
         <!-- Chapters -->
-        <div v-if="projectData.chapters && projectData.chapters.length > 0" class="max-w-7xl mx-auto space-y-6 px-2">
+        <div v-if="projectData.chapters && projectData.chapters.length > 0" class="w-[90%] mx-auto space-y-6 px-2">
           <ChapterSection
             v-for="(chapter, index) in projectData.chapters"
             :key="chapter.id"
@@ -331,6 +365,7 @@
             :edges="projectData.edges"
             :node-positions="nodePositions"
             :project-id="currentProjectId"
+            :color-scheme="colorScheme"
             @update-node-positions="(positions) => Object.assign(nodePositions, positions)"
             @add-section="handleAddSection"
             @delete-chapter="handleDeleteChapter"
@@ -343,7 +378,7 @@
             @node-dragging="handleNodeDragging"
             @node-drag-end="handleNodeDragEnd"
           />
-
+          
           <!-- Add Chapter Button -->
           <div v-if="projectData.chapters.length > 0" class="flex justify-center">
             <button 
@@ -485,12 +520,35 @@ import ProjectSidebar from './components/ProjectSidebar.vue'
 import ChapterSection from './components/ChapterSection.vue'
 import DAGPanel from './components/DAGPanel.vue'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// 自动检测 API URL：如果设置了环境变量则使用，否则根据当前页面 hostname 自动构建
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // 在开发环境中，使用当前页面的 hostname 和端口 8000
+  if (import.meta.env.DEV) {
+    const hostname = window.location.hostname
+    return `http://${hostname}:8000`
+  }
+  
+  // 生产环境使用当前页面的 origin
+  return window.location.origin.replace(/:\d+$/, ':8000')
+}
+
+const API_URL = getApiUrl()
 
 const projects = ref([])
 const currentProjectId = ref(null)
 const projectData = reactive({ chapters: [], edges: [] })
 const fileInput = ref(null)
+// 颜色方案：'default' 或 'seaborn-set2'，从 localStorage 读取或使用默认值
+const colorScheme = ref(localStorage.getItem('colorScheme') || 'seaborn-set2')
+
+// 监听颜色方案变化，保存到 localStorage
+watch(colorScheme, (newScheme) => {
+  localStorage.setItem('colorScheme', newScheme)
+})
 const newChapterName = ref('')
 const showAddChapterModal = ref(false)
 const linkMode = reactive({ source: null, target: null })
@@ -521,16 +579,18 @@ const fetchProjects = async () => {
     const res = await axios.get(`${API_URL}/projects`)
     projects.value = res.data
     
-    // 如果有项目但没有选中项目，自动选中第一个项目（优先选择 demo）
+    // 如果有项目但没有选中项目，自动选中最近更新的项目
     if (projects.value.length > 0 && !currentProjectId.value) {
-      const demoProject = projects.value.find(p => p.id === 'demo')
-      if (demoProject) {
-        currentProjectId.value = demoProject.id
-        loadProject()
-      } else {
-      currentProjectId.value = projects.value[0].id
+      // 按 updated_at 倒序排序，最新的在前
+      const sortedProjects = [...projects.value].sort((a, b) => {
+        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0
+        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0
+        return dateB - dateA // 倒序：最新的在前
+      })
+      
+      // 选择最近更新的项目
+      currentProjectId.value = sortedProjects[0].id
       loadProject()
-      }
     }
   } catch (e) {
     console.error('Failed to fetch projects:', e)
@@ -882,7 +942,6 @@ const handleDeleteNode = async (nodeId) => {
       }
     )
     
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
     const response = await axios.delete(`${API_URL}/projects/${currentProjectId.value}/nodes/${nodeId}`)
     console.log('Delete node response:', response)
     
@@ -912,22 +971,22 @@ const handleNodeClick = (nodeId, event) => {
     }
 
     // 处理连接逻辑
-    if (!linkMode.source) {
+  if (!linkMode.source) {
       // 选择起点
-      linkMode.source = nodeId
+    linkMode.source = nodeId
       linkMode.target = null
       console.log('Set source:', nodeId)
-    } else if (linkMode.source === nodeId) {
+  } else if (linkMode.source === nodeId) {
       // 如果点击的是已选中的起点，取消选择
       resetLinkMode()
       console.log('Reset link mode')
     } else if (linkMode.target === nodeId) {
       // 如果点击的是已选中的终点，取消选择终点
-      linkMode.target = null
+    linkMode.target = null
       console.log('Reset target')
-    } else {
+  } else {
       // 选择终点
-      linkMode.target = nodeId
+    linkMode.target = nodeId
       console.log('Set target:', nodeId)
     }
     return
@@ -1181,7 +1240,7 @@ const getNodeAbsolutePosition = (nodeId) => {
   if (typeof nodeElement.getBoundingClientRect !== 'function') {
     return null
   }
-  
+
   const canvasContainerEl = canvasContainer.value
   if (!canvasContainerEl) {
     return null
@@ -1209,7 +1268,7 @@ const getNodeAbsolutePosition = (nodeId) => {
       right: nodeRect.left - canvasRect.left + scrollLeft + nodeRect.width,
       bottom: nodeRect.top - canvasRect.top + scrollTop + nodeRect.height
     }
-  } catch (e) {
+      } catch (e) {
     return null
   }
 }
@@ -1260,8 +1319,8 @@ const getNodeEdgePointCrossChapter = (sourcePos, targetPos) => {
       const tY = dy > 0 ? (sourceBottom - sourceCenterY) / Math.abs(dy) : (sourceCenterY - sourceTop) / Math.abs(dy)
       edgeY = sourceCenterY + dy * tY
       edgeX = sourceCenterX + dx * tY
-    }
-  } else {
+      }
+    } else {
     // 垂直方向为主
     const t = halfHeight / Math.abs(ny)
     edgeY = sourceCenterY + ny * halfHeight
@@ -1684,7 +1743,7 @@ const editEdge = async (edge) => {
       target: edge.target,
       label: label || ''
     })
-    loadProject()
+  loadProject()
     ElMessage.success('连接标签更新成功')
   } catch (e) {
     if (e !== 'cancel') {
