@@ -5,7 +5,9 @@ from typing import Optional
 from knowledge_dag.models import (
     CreateProjectRequest, UpdateProjectRequest, AddChapterRequest, AddSectionRequest,
     AddNodeRequest, UpdateNodeRequest, AddEdgeRequest, UpdateEdgeRequest,
-    ReorderNodesRequest, UpdateNodePositionRequest, NodeLocationResponse
+    ReorderNodesRequest, ReorderSectionsRequest, ReorderChaptersRequest,
+    UpdateNodePositionRequest, NodeLocationResponse,
+    UpdateChapterRequest, UpdateSectionRequest
 )
 from knowledge_dag.services import (
     ProjectService, ChapterService, SectionService,
@@ -59,6 +61,16 @@ def add_chapter(project_id: str, request: AddChapterRequest):
     return ChapterService.add_chapter(project_id, request)
 
 
+@router.put("/projects/{project_id}/chapters/{chapter_id}")
+def update_chapter(project_id: str, chapter_id: str, request: UpdateChapterRequest):
+    """更新章节名称和布局"""
+    return ChapterService.update_chapter(project_id, chapter_id, request)
+
+@router.post("/projects/{project_id}/chapters/reorder")
+def reorder_chapters(project_id: str, request: ReorderChaptersRequest):
+    """重排序章节"""
+    return ChapterService.reorder_chapters(project_id, request)
+
 @router.delete("/projects/{project_id}/chapters/{chapter_id}")
 def delete_chapter(project_id: str, chapter_id: str):
     """删除章节"""
@@ -70,6 +82,16 @@ def add_section(project_id: str, request: AddSectionRequest):
     """添加部分"""
     return SectionService.add_section(project_id, request)
 
+
+@router.put("/projects/{project_id}/sections/{section_id}")
+def update_section(project_id: str, section_id: str, request: UpdateSectionRequest):
+    """更新部分名称"""
+    return SectionService.update_section(project_id, section_id, request)
+
+@router.post("/projects/{project_id}/sections/reorder")
+def reorder_sections(project_id: str, request: ReorderSectionsRequest):
+    """重排序部分"""
+    return SectionService.reorder_sections(project_id, request)
 
 @router.delete("/projects/{project_id}/sections/{section_id}")
 def delete_section(project_id: str, section_id: str):

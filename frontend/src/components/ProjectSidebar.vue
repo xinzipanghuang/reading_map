@@ -9,20 +9,20 @@
   <!-- Sidebar -->
   <div
     :class="[
-      'bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300 ease-in-out',
+      'bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300 ease-in-out shadow-sm',
       isExpanded 
         ? 'w-64' 
         : 'w-0 lg:w-16 overflow-hidden',
-      isMobile && !isExpanded ? 'hidden' : 'fixed lg:relative z-50 lg:z-auto'
+      isMobile && !isExpanded ? 'hidden' : 'fixed lg:sticky lg:top-0 z-50 lg:z-auto'
     ]"
   >
     <!-- Header -->
     <div class="p-4 border-b border-gray-200 flex-shrink-0">
       <div class="flex items-center justify-between mb-3">
-        <h2 v-if="isExpanded" class="text-lg font-bold text-gray-800">项目列表</h2>
+        <h2 v-if="isExpanded" class="text-base font-bold text-gray-800">项目列表</h2>
         <button
           @click="toggleSidebar"
-          class="p-2 text-gray-600 hover:bg-gray-100 rounded transition ml-auto lg:ml-0"
+          class="px-2 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition border border-transparent hover:border-gray-300"
           :title="isExpanded ? '收起' : '展开'"
         >
           <i :class="isExpanded ? 'ph ph-sidebar-simple' : 'ph ph-sidebar'"></i>
@@ -31,7 +31,7 @@
       <button
         v-if="isExpanded"
         @click="showNewProjectModal = true"
-        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2"
+        class="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-xs lg:text-sm hover:border-gray-400 hover:bg-gray-50 transition flex items-center justify-center gap-2 shadow-sm"
       >
         <i class="ph ph-plus"></i>
         <span class="hidden lg:inline">新建项目</span>
@@ -39,7 +39,7 @@
       <button
         v-else
         @click="showNewProjectModal = true"
-        class="w-full p-2 text-gray-600 hover:bg-gray-100 rounded transition flex items-center justify-center"
+        class="w-full px-2 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition flex items-center justify-center border border-transparent hover:border-gray-300"
         title="新建项目"
       >
         <i class="ph ph-plus text-lg"></i>
@@ -52,10 +52,10 @@
         v-for="project in sortedProjects"
         :key="project.id"
         :class="[
-          'rounded-lg transition mb-2 group',
+          'rounded-lg transition mb-2 group shadow-sm',
           currentProjectId === project.id
-            ? 'bg-blue-50 border-2 border-blue-500'
-            : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent',
+            ? 'bg-blue-50 border-2 border-blue-400'
+            : 'bg-white border border-gray-300 hover:border-gray-400 hover:bg-gray-50',
           isExpanded ? 'p-3' : 'p-2 flex items-center justify-center'
         ]"
       >
@@ -73,14 +73,14 @@
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               @click.stop="showRenameModal(project)"
-              class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+              class="px-2 py-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition border border-transparent hover:border-blue-200"
               title="重命名"
             >
               <i class="ph ph-pencil text-sm"></i>
             </button>
             <button
               @click.stop="showDeleteConfirm(project)"
-              class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition"
+              class="px-2 py-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition border border-transparent hover:border-red-200"
               title="删除"
             >
               <i class="ph ph-trash text-sm"></i>

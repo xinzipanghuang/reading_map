@@ -17,13 +17,13 @@
       <header class="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 flex justify-between items-center shadow-sm">
         <div class="flex items-center gap-3 flex-1 min-w-0">
           <!-- Mobile Menu Button -->
-          <button
+        <button 
             @click="openSidebar"
             class="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded transition"
             title="打开菜单"
-          >
+        >
             <i class="ph ph-list text-xl"></i>
-          </button>
+        </button>
           <div class="min-w-0 flex-1">
             <h1 class="text-xl lg:text-2xl font-bold text-gray-800 truncate">
               {{ currentProject?.name || '知识图谱构建器' }}
@@ -31,91 +31,574 @@
             <p v-if="currentProject" class="text-xs lg:text-sm text-gray-600 mt-1 hidden lg:block">
               从直觉到综合：构建你的知识路径
             </p>
-          </div>
       </div>
-      <div class="flex items-center gap-2 lg:gap-4 flex-shrink-0">
-          <!-- Color Scheme Selector -->
-          <div class="hidden md:flex items-center gap-2">
-            <label class="text-sm text-gray-600 flex items-center gap-1">
-              <i class="ph ph-palette"></i>
-              <span class="hidden lg:inline">配色方案:</span>
-            </label>
-        <select 
-              v-model="colorScheme"
-              class="px-2 lg:px-3 py-1.5 border border-gray-300 rounded-lg text-xs lg:text-sm bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-        >
-              <option value="default">默认 (Tailwind)</option>
-              <option value="seaborn-set1">Seaborn Set1</option>
-              <option value="seaborn-set2">Seaborn Set2</option>
-              <option value="seaborn-set3">Seaborn Set3</option>
-              <option value="seaborn-pastel1">Seaborn Pastel1</option>
-              <option value="seaborn-pastel2">Seaborn Pastel2</option>
-              <option value="seaborn-dark2">Seaborn Dark2</option>
-              <option value="seaborn-accent">Seaborn Accent</option>
-              <option value="seaborn-paired">Seaborn Paired</option>
-              <option value="seaborn-spectral">Seaborn Spectral</option>
-        </select>
           </div>
-          
-          <!-- Import/Export Buttons -->
-        <button 
-            @click="triggerImport"
-            class="px-2 lg:px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-xs lg:text-sm flex items-center gap-1 lg:gap-2"
-            title="从 YAML 导入项目"
-        >
-            <i class="ph ph-upload"></i>
-            <span class="hidden sm:inline">导入 YAML</span>
-        </button>
-            <input 
-            ref="fileInput"
-            type="file"
-            accept=".yaml,.yml"
-            style="display: none"
-            @change="handleFileImport"
-          />
+      <div class="flex items-center gap-2 lg:gap-3 flex-shrink-0">
+          <!-- 第一组：数据操作菜单（最左边） -->
+          <div class="relative" @click.stop>
             <button 
-            v-if="currentProjectId"
-            @click="exportProject"
-            class="px-2 lg:px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs lg:text-sm flex items-center gap-1 lg:gap-2"
-            title="导出为 YAML"
+              @click="showDataMenu = !showDataMenu"
+              class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition text-xs lg:text-sm flex items-center gap-1.5 shadow-sm text-gray-700"
+              title="数据操作"
             >
-            <i class="ph ph-download"></i>
-            <span class="hidden sm:inline">导出 YAML</span>
+              <i class="ph ph-dots-three-vertical"></i>
+              <span class="hidden sm:inline">数据</span>
+              <i :class="showDataMenu ? 'ph ph-caret-up' : 'ph ph-caret-down'" class="text-xs"></i>
             </button>
+            
+            <!-- 下拉菜单 -->
+            <transition
+              enter-active-class="transition-all duration-200 ease-out"
+              enter-from-class="opacity-0 translate-y-2"
+              enter-to-class="opacity-100 translate-y-0"
+              leave-active-class="transition-all duration-150 ease-in"
+              leave-from-class="opacity-100 translate-y-0"
+              leave-to-class="opacity-0 translate-y-2"
+            >
+              <div
+                v-if="showDataMenu"
+                class="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-[100] py-1"
+            >
+            <button 
+                  @click="triggerImport(); showDataMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2"
+                >
+                  <i class="ph ph-upload text-purple-600"></i>
+                  <span>导入 YAML</span>
+                </button>
+                <input 
+                  ref="fileInput"
+                  type="file"
+                  accept=".yaml,.yml"
+                  style="display: none"
+                  @change="handleFileImport"
+                />
+                <button 
+                  v-if="currentProjectId"
+                  @click="exportProject(); showDataMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2"
+                >
+                  <i class="ph ph-download text-green-600"></i>
+                  <span>导出 YAML</span>
+            </button>
+          </div>
+            </transition>
+        </div>
 
-          <!-- Link Mode Status -->
-          <div 
-            v-if="linkMode.source"
-            class="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 flex items-center gap-3 text-sm"
-          >
-            <span class="font-bold text-blue-600">{{ getNodeName(linkMode.source) }}</span>
-            <i class="ph ph-arrow-right text-gray-400"></i>
-            <span v-if="!linkMode.target" class="text-gray-400">选择终点...</span>
-            <span v-else class="font-bold text-green-600">{{ getNodeName(linkMode.target) }}</span>
-              <button 
-              v-if="linkMode.target"
-              @click="createEdge"
-              class="ml-2 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition text-xs"
-              >
-              连接
+          <!-- 分隔线 -->
+          <div class="hidden md:block w-px h-6 bg-gray-300"></div>
+          
+          <!-- 第二组：配色方案（中间） -->
+          <div class="relative hidden md:block" @click.stop>
+            <button 
+              @click="showColorMenu = !showColorMenu"
+              class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition text-xs lg:text-sm flex items-center gap-1.5 shadow-sm text-gray-700"
+              title="配色方案"
+            >
+              <i class="ph ph-palette"></i>
+              <span class="hidden sm:inline">配色</span>
+              <i :class="showColorMenu ? 'ph ph-caret-up' : 'ph ph-caret-down'" class="text-xs"></i>
             </button>
-            <button @click="resetLinkMode" class="text-gray-400 hover:text-gray-600">
-              <i class="ph ph-x"></i>
+            
+            <!-- 下拉菜单 -->
+            <transition
+              enter-active-class="transition-all duration-200 ease-out"
+              enter-from-class="opacity-0 translate-y-2"
+              enter-to-class="opacity-100 translate-y-0"
+              leave-active-class="transition-all duration-150 ease-in"
+              leave-from-class="opacity-100 translate-y-0"
+              leave-to-class="opacity-0 translate-y-2"
+            >
+              <div
+                v-if="showColorMenu"
+                class="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-[100] py-1 max-h-64 overflow-y-auto"
+              >
+              <button 
+                  @click="colorScheme = 'default'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'default' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>默认</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-set1'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-set1' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Set1</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-set2'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-set2' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Set2</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-set3'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-set3' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Set3</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-pastel1'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-pastel1' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Pastel1</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-pastel2'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-pastel2' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Pastel2</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-dark2'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-dark2' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Dark2</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-accent'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-accent' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Accent</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-paired'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-paired' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Paired</span>
+                </button>
+                <button 
+                  @click="colorScheme = 'seaborn-spectral'; showColorMenu = false"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                  :class="colorScheme === 'seaborn-spectral' ? 'bg-blue-50 text-blue-700' : ''"
+                >
+                  <i class="ph ph-palette"></i>
+                  <span>Spectral</span>
+              </button>
+              </div>
+            </transition>
+            </div>
+            
+          <!-- 分隔线 -->
+          <div class="hidden md:block w-px h-6 bg-gray-300"></div>
+          
+          <!-- 第三组：布局设置（最右边） -->
+                  <button 
+            @click.stop="showLayoutSettings = !showLayoutSettings"
+            class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition text-xs lg:text-sm flex items-center gap-2 shadow-sm"
+            :class="showLayoutSettings ? 'bg-blue-50 border-blue-400 text-blue-700' : 'text-gray-700'"
+            title="布局设置"
+          >
+            <i :class="showLayoutSettings ? 'ph ph-sliders-horizontal' : 'ph ph-sliders'"></i>
+            <span class="hidden sm:inline">布局</span>
+                  </button>
+                </div>
+    </header>
+    
+    <!-- Layout Settings Sidebar (Right Side) -->
+    <transition
+      enter-active-class="transition-all duration-300 ease-out"
+      enter-from-class="translate-x-full opacity-0"
+      enter-to-class="translate-x-0 opacity-100"
+      leave-active-class="transition-all duration-300 ease-in"
+      leave-from-class="translate-x-0 opacity-100"
+      leave-to-class="translate-x-full opacity-0"
+    >
+      <div
+        v-if="showLayoutSettings"
+        class="fixed top-[80px] right-0 bottom-0 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col"
+        :style="{ width: `${layoutSettingsWidth}px` }"
+        @click.stop
+      >
+        <!-- Sidebar Header -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gray-50">
+          <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+            <i class="ph ph-sliders"></i>
+            <span>布局设置</span>
+          </h3>
+                  <button 
+            @click.stop="showLayoutSettings = false"
+            class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-1 transition"
+                  >
+            <i class="ph ph-x text-lg"></i>
+                  </button>
+                </div>
+                
+        <!-- Sidebar Content -->
+        <div class="flex-1 overflow-y-auto layout-settings-scrollbar p-5">
+          <div class="space-y-3">
+            <!-- Selected Item Properties (选中项属性，放在最前面) -->
+            <div v-if="editingItem.type" class="border border-gray-200 rounded-lg overflow-hidden border-blue-300">
+              <button 
+                @click.stop="expandedSections.editingItem = !expandedSections.editingItem"
+                class="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-all duration-200 flex items-center justify-between"
+              >
+                <div class="flex items-center gap-2">
+                  <i :class="editingItem.type === 'chapter' ? 'ph ph-book-open text-base text-blue-600' : editingItem.type === 'section' ? 'ph ph-stack text-base text-green-600' : 'ph ph-circle text-base text-purple-600'"></i>
+                  <span class="text-sm font-semibold text-gray-800">
+                    {{ editingItem.type === 'chapter' ? '章节属性' : editingItem.type === 'section' ? '部分属性' : '节点属性' }}
+                    </span>
+                  </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    @click.stop="editingItem = { type: null, id: null, chapterId: null, sectionId: null }"
+                    class="text-gray-400 hover:text-gray-600 hover:bg-white rounded-full p-1 transition"
+                    title="关闭编辑"
+                  >
+                    <i class="ph ph-x text-sm"></i>
+                  </button>
+                  <i :class="expandedSections.editingItem ? 'ph ph-chevron-up text-gray-500' : 'ph ph-chevron-down text-gray-500'"></i>
+                  </div>
+              </button>
+              <div v-show="expandedSections.editingItem" class="p-4 space-y-4 bg-white">
+                <!-- Chapter Properties -->
+                <div v-if="editingItem.type === 'chapter'" class="space-y-4">
+                  <div>
+                    <label class="text-xs font-medium text-gray-700 mb-2 block">章节名称</label>
+                <input 
+                      v-model="selectedChapterName"
+                      @blur="updateChapterName"
+                      @click.stop
+                      class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label class="text-xs font-medium text-gray-700 mb-2 block">布局方式</label>
+                <button 
+                      @click.stop="toggleChapterLayout"
+                      class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 bg-white hover:border-blue-400 hover:bg-blue-50"
+                >
+                      <i :class="getChapterLayoutIcon(selectedChapterLayout)" class="text-base"></i>
+                      <span>{{ getChapterLayoutText(selectedChapterLayout) }}</span>
+                </button>
+                  </div>
+              </div>
+              
+                <!-- Section Properties -->
+                <div v-else-if="editingItem.type === 'section'" class="space-y-4">
+                  <div>
+                    <label class="text-xs font-medium text-gray-700 mb-2 block">部分名称</label>
+                <input 
+                      v-model="selectedSectionName"
+                      @blur="updateSectionName"
+                      @click.stop
+                      class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <!-- Node Properties -->
+                <div v-else-if="editingItem.type === 'node'" class="space-y-4">
+                  <div>
+                    <label class="text-xs font-medium text-gray-700 mb-2 block">节点名称</label>
+                    <input
+                      v-model="selectedNodeName"
+                      @blur="updateNodeName"
+                      @click.stop
+                      class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label class="text-xs font-medium text-gray-700 mb-2 block">节点内容</label>
+                    <textarea
+                      v-model="selectedNodeContent"
+                      @blur="updateNodeContent"
+                      @click.stop
+                      rows="4"
+                      class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+              </div>
+              
+            <!-- Node Settings Section (节点设置，最前面，默认展开) -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <button 
+                @click.stop="expandedSections.node = !expandedSections.node"
+                class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-all duration-200 flex items-center justify-between"
+              >
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-circle text-base text-purple-600"></i>
+                  <span class="text-sm font-semibold text-gray-800">节点设置</span>
+                </div>
+                <i :class="expandedSections.node ? 'ph ph-chevron-up text-gray-500' : 'ph ph-chevron-down text-gray-500'"></i>
+                </button>
+              <div v-show="expandedSections.node" class="p-4 space-y-4 bg-white">
+                <!-- Node Width Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">节点宽度</label>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ nodeWidth }}px</span>
+              </div>
+                  <input
+                    v-model.number="nodeWidth"
+                    type="range"
+                    min="150"
+                    max="500"
+                    step="10"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+            </div>
+                
+                <!-- Node Height Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">节点高度</label>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ nodeHeight }}px</span>
+          </div>
+                  <input
+                    v-model.number="nodeHeight"
+                    type="range"
+                    min="50"
+                    max="200"
+                    step="5"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+        </div>
+                
+                <!-- Horizontal Spacing Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">水平间距</label>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ horizontalSpacing }}px</span>
+                  </div>
+                  <input
+                    v-model.number="horizontalSpacing"
+                    type="range"
+                    min="20"
+                    max="300"
+                    step="10"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+      </div>
+
+                <!-- Vertical Spacing Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">垂直间距</label>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ verticalSpacing }}px</span>
+                  </div>
+                  <input
+                    v-model.number="verticalSpacing"
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="5"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                </div>
+                
+                <!-- Node Alignment Selector -->
+                <div>
+                  <label class="text-xs font-medium text-gray-700 mb-2 block">节点排列方式</label>
+                  <select
+                    v-model="nodeAlignment"
+                    @click.stop
+                    class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer"
+                  >
+                    <option value="left">左对齐</option>
+                    <option value="center">居中</option>
+                    <option value="right">右对齐</option>
+                    <option value="justify-between">两端对齐</option>
+                    <option value="space-evenly">均匀分布</option>
+                    <option value="space-around">环绕分布</option>
+                  </select>
+            </div>
+              </div>
+            </div>
+            
+            <!-- Section Settings Section (部分设置，默认展开) -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+              <button 
+                @click.stop="expandedSections.section = !expandedSections.section"
+                class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-all duration-200 flex items-center justify-between"
+              >
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-stack text-base text-green-600"></i>
+                  <span class="text-sm font-semibold text-gray-800">部分设置</span>
+                </div>
+                <i :class="expandedSections.section ? 'ph ph-chevron-up text-gray-500' : 'ph ph-chevron-down text-gray-500'"></i>
+              </button>
+              <div v-show="expandedSections.section" class="p-4 space-y-4 bg-white">
+                <!-- Section Width Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">部分宽度</label>
+                    <span class="text-xs font-semibold" :class="sectionWidth ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'">
+                      {{ sectionWidth || '自动' }}{{ sectionWidth ? 'px' : '' }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input 
+                      v-model.number="sectionWidth"
+                      type="range"
+                      min="200"
+                      max="1500"
+                      step="50"
+                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    />
+              <button 
+                      @click.stop="sectionWidth = null"
+                      class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-300 rounded-lg transition whitespace-nowrap"
+                      title="设为自动"
+              >
+                      自动
               </button>
             </div>
-          <div v-else class="text-sm text-gray-500">
-            按住 Ctrl + 左键点击节点开始创建连接 | 双击节点查看 DAG
+                </div>
+                
+                <!-- Section Height Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">部分高度</label>
+                    <span class="text-xs font-semibold" :class="sectionHeight ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'">
+                      {{ sectionHeight || '自动' }}{{ sectionHeight ? 'px' : '' }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input
+                      v-model.number="sectionHeight"
+                      type="range"
+                      min="100"
+                      max="1500"
+                      step="50"
+                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                    <button 
+                      @click.stop="sectionHeight = null"
+                      class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-300 rounded-lg transition whitespace-nowrap"
+                      title="设为自动"
+                    >
+                      自动
+                    </button>
           </div>
-      </div>
-    </header>
+        </div>
 
-      <!-- Canvas Area -->
-      <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 relative" v-if="currentProjectId" ref="canvasContainer">
+                <!-- Section Spacing Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">部分间隔</label>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ sectionSpacing }}px</span>
+                  </div>
+                  <input
+                    v-model.number="sectionSpacing"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="4"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <!-- Chapter Settings Section (章节设置，默认展开) -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <button 
+                @click.stop="expandedSections.chapter = !expandedSections.chapter"
+                class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-all duration-200 flex items-center justify-between"
+              >
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-book-open text-base text-blue-600"></i>
+                  <span class="text-sm font-semibold text-gray-800">章节设置</span>
+                </div>
+                <i :class="expandedSections.chapter ? 'ph ph-chevron-up text-gray-500' : 'ph ph-chevron-down text-gray-500'"></i>
+            </button>
+              <div v-show="expandedSections.chapter" class="p-4 space-y-4 bg-white">
+                <!-- Chapter Width Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">章节宽度</label>
+                    <span class="text-xs font-semibold" :class="chapterWidth ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'">
+                      {{ chapterWidth || '自动' }}{{ chapterWidth ? 'px' : '' }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input
+                      v-model.number="chapterWidth"
+                      type="range"
+                      min="400"
+                      max="2000"
+                      step="50"
+                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    />
+            <button 
+                      @click.stop="chapterWidth = null"
+                      class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-300 rounded-lg transition whitespace-nowrap"
+                      title="设为自动"
+                    >
+                      自动
+            </button>
+          </div>
+        </div>
+        
+                <!-- Chapter Height Slider -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-700">章节高度</label>
+                    <span class="text-xs font-semibold" :class="chapterHeight ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'">
+                      {{ chapterHeight || '自动' }}{{ chapterHeight ? 'px' : '' }}
+          </span>
+        </div>
+                  <div class="flex items-center gap-2">
+                    <input
+                      v-model.number="chapterHeight"
+                      type="range"
+                      min="200"
+                      max="2000"
+                      step="50"
+                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                    <button
+                      @click.stop="chapterHeight = null"
+                      class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-300 rounded-lg transition whitespace-nowrap"
+                      title="设为自动"
+                    >
+                      自动
+                    </button>
+      </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+    
+    <!-- Canvas Area -->
+    <div 
+      class="flex-1 overflow-y-auto overflow-x-hidden p-4 relative transition-all duration-300" 
+      v-if="currentProjectId" 
+      ref="canvasContainer"
+      :style="{ 
+        width: showLayoutSettings ? `calc(100% - ${layoutSettingsWidth}px)` : '100%',
+        maxWidth: showLayoutSettings ? `calc(100% - ${layoutSettingsWidth}px)` : '100%'
+      }"
+    >
         <!-- Connection Lines SVG Overlay (统一处理所有连接) -->
         <svg
           v-if="crossChapterEdges.length > 0"
-          class="absolute inset-0 pointer-events-none z-10"
-          style="overflow: visible;"
+          class="absolute inset-0 pointer-events-none"
+          style="z-index: 5; overflow: visible;"
           :width="canvasWidth"
           :height="canvasHeight"
         >
@@ -155,7 +638,7 @@
             :key="`${edge.source}-${edge.target}`"
             @click.stop="showEdgeContextMenu($event, edge)"
             @contextmenu.prevent="showEdgeContextMenu($event, edge)"
-            @mouseenter="hoveredCrossEdge = { source: edge.source, target: edge.target }"
+            @mousemove="(e) => checkEdgeHover(e, edge)"
             @mouseleave="hoveredCrossEdge = null"
             class="cursor-pointer transition-all"
             style="pointer-events: all;"
@@ -223,7 +706,7 @@
             :key="`hover-bg-${edge.source}-${edge.target}`"
             @click.stop="showEdgeContextMenu($event, edge)"
             @contextmenu.prevent="showEdgeContextMenu($event, edge)"
-            @mouseenter="hoveredCrossEdge = { source: edge.source, target: edge.target }"
+            @mousemove="(e) => checkEdgeHover(e, edge)"
             @mouseleave="hoveredCrossEdge = null"
             class="cursor-pointer transition-all"
             style="pointer-events: all;"
@@ -330,7 +813,7 @@
             </text>
           </g>
         </svg>
-        <!-- Empty State -->
+    <!-- Empty State -->
         <div v-if="projectData.chapters.length === 0" class="text-center py-20">
           <i class="ph ph-graph text-6xl text-gray-300 mb-4"></i>
           <p class="text-gray-500 mb-6">还没有章节，开始添加第一个章节吧</p>
@@ -342,15 +825,15 @@
               placeholder="输入新章节名称 (如: 第一章)"
               class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
             />
-              <button 
+            <button 
               @click="addChapter"
               class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-              >
+            >
               添加章节
-              </button>
+            </button>
           </div>
         </div>
-
+        
         <!-- Chapters -->
         <div v-if="projectData.chapters && projectData.chapters.length > 0" class="w-[90%] mx-auto space-y-6 px-2">
           <ChapterSection
@@ -366,6 +849,17 @@
             :node-positions="nodePositions"
             :project-id="currentProjectId"
             :color-scheme="colorScheme"
+            :global-layout="globalLayout"
+            :node-width="nodeWidth"
+            :node-height="nodeHeight"
+            :horizontal-spacing="horizontalSpacing"
+            :vertical-spacing="verticalSpacing"
+            :chapter-width="chapterWidth"
+            :chapter-height="chapterHeight"
+            :section-width="sectionWidth"
+            :section-height="sectionHeight"
+            :section-spacing="sectionSpacing"
+            :node-alignment="nodeAlignment"
             @update-node-positions="(positions) => Object.assign(nodePositions, positions)"
             @add-section="handleAddSection"
             @delete-chapter="handleDeleteChapter"
@@ -377,6 +871,15 @@
             @node-dblclick="showDAGForNode"
             @node-dragging="handleNodeDragging"
             @node-drag-end="handleNodeDragEnd"
+            @edit-item="handleEditItem"
+            @section-reorder="handleSectionReorder"
+            @chapter-reorder="handleChapterReorder"
+            @section-position-updated="handleSectionPositionUpdated"
+            @section-dragging="handleSectionDragging"
+            @section-size-updated="handleSectionSizeUpdated"
+            @chapter-layout-change="handleChapterLayoutChange"
+            @chapter-updated="handleChapterUpdated"
+            @section-updated="handleSectionUpdated"
           />
           
           <!-- Add Chapter Button -->
@@ -388,8 +891,8 @@
               <i class="ph ph-plus-circle"></i>
               添加新章节
             </button>
-          </div>
         </div>
+      </div>
         </div>
 
       <!-- Empty Project State -->
@@ -400,6 +903,53 @@
         </div>
       </div>
     </div>
+
+    <!-- 连接模式状态（右下角浮动） -->
+    <transition
+      enter-active-class="transition-all duration-300 ease-out"
+      enter-from-class="opacity-0 translate-y-4"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-200 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-4"
+    >
+      <div
+        v-if="linkMode.source"
+        class="fixed bottom-6 right-6 bg-white border border-gray-200 rounded-lg shadow-xl z-40 px-4 py-3 min-w-[280px]"
+        :style="{ right: showLayoutSettings ? `${layoutSettingsWidth + 20}px` : '24px' }"
+      >
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <i class="ph ph-link text-blue-600"></i>
+            <span>创建连接</span>
+          </div>
+          <button @click="resetLinkMode" class="text-gray-400 hover:text-gray-600 transition">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 text-xs mb-3">
+          <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded font-medium">{{ getNodeName(linkMode.source) }}</span>
+          <i class="ph ph-arrow-right text-gray-400"></i>
+          <span v-if="!linkMode.target" class="px-2 py-1 bg-gray-100 text-gray-500 rounded">选择终点...</span>
+          <span v-else class="px-2 py-1 bg-green-100 text-green-700 rounded font-medium">{{ getNodeName(linkMode.target) }}</span>
+        </div>
+        <button 
+          v-if="linkMode.target" 
+          @click="createEdge" 
+          class="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium flex items-center justify-center gap-2"
+        >
+          <i class="ph ph-check"></i>
+          <span>确认连接</span>
+        </button>
+      </div>
+    </transition>
+    
+    <!-- 点击外部关闭菜单 -->
+    <div
+      v-if="showDataMenu || showColorMenu"
+      class="fixed inset-0 z-30"
+      @click="showDataMenu = false; showColorMenu = false"
+    ></div>
 
     <!-- Add Chapter Modal -->
     <div 
@@ -549,6 +1099,436 @@ const colorScheme = ref(localStorage.getItem('colorScheme') || 'seaborn-set2')
 watch(colorScheme, (newScheme) => {
   localStorage.setItem('colorScheme', newScheme)
 })
+
+// 全局布局设置
+const showLayoutSettings = ref(true)
+const showDataMenu = ref(false)
+const showColorMenu = ref(false)
+const layoutSettingsWidth = 360 // 页面设置侧边栏宽度（px）
+const globalLayout = ref(localStorage.getItem('globalLayout') || 'row')
+const nodeWidth = ref(Number(localStorage.getItem('nodeWidth')) || 300)
+const nodeHeight = ref(Number(localStorage.getItem('nodeHeight')) || 70)
+const horizontalSpacing = ref(Number(localStorage.getItem('horizontalSpacing')) || 100)
+const verticalSpacing = ref(Number(localStorage.getItem('verticalSpacing')) || 20)
+const chapterWidth = ref(localStorage.getItem('chapterWidth') ? Number(localStorage.getItem('chapterWidth')) : null)
+const chapterHeight = ref(localStorage.getItem('chapterHeight') ? Number(localStorage.getItem('chapterHeight')) : null)
+const sectionWidth = ref(localStorage.getItem('sectionWidth') ? Number(localStorage.getItem('sectionWidth')) : null)
+const sectionHeight = ref(localStorage.getItem('sectionHeight') ? Number(localStorage.getItem('sectionHeight')) : null)
+const sectionSpacing = ref(Number(localStorage.getItem('sectionSpacing')) || 12)
+const nodeAlignment = ref(localStorage.getItem('nodeAlignment') || 'left')
+
+// 折叠面板状态
+const expandedSections = ref({
+  editingItem: true, // 编辑项属性默认展开
+  node: true,     // 节点设置默认展开
+  section: true,  // 部分设置默认展开
+  chapter: true  // 章节设置默认展开
+})
+
+// 选中状态管理
+const editingItem = ref({
+  type: null, // 'node' | 'chapter' | 'section'
+  id: null,
+  chapterId: null,
+  sectionId: null
+})
+
+// 选中项的属性编辑
+const selectedChapterName = ref('')
+const selectedChapterLayout = ref('row')
+const selectedChapterWidth = ref(null)
+const selectedChapterHeight = ref(null)
+const selectedChapterBorderColor = ref('#e5e7eb')
+const selectedChapterFillColor = ref('#ffffff')
+const selectedChapterAlign = ref('left')
+
+const selectedSectionName = ref('')
+const selectedSectionWidth = ref(null)
+const selectedSectionHeight = ref(null)
+const selectedSectionBorderColor = ref('#e5e7eb')
+const selectedSectionFillColor = ref('#ffffff')
+const selectedSectionAlign = ref('left')
+
+const selectedNodeName = ref('')
+const selectedNodeContent = ref('')
+const selectedNodeBorderColor = ref('#e5e7eb')
+const selectedNodeFillColor = ref('#ffffff')
+const selectedNodeAlign = ref('left')
+
+// 处理编辑项事件
+const handleEditItem = (item) => {
+  editingItem.value = { ...item }
+  // 展开编辑面板
+  expandedSections.editingItem = true
+  
+  // 根据类型加载对应的属性值
+  if (item.type === 'chapter' && item.chapterId) {
+    const chapter = projectData.value.chapters.find(ch => ch.id === item.chapterId)
+    if (chapter) {
+      selectedChapterName.value = chapter.name
+      selectedChapterLayout.value = chapter.layout || 'row'
+      selectedChapterWidth.value = chapterWidth.value
+      selectedChapterHeight.value = chapterHeight.value
+      selectedChapterBorderColor.value = chapter.borderColor || '#e5e7eb'
+      selectedChapterFillColor.value = chapter.fillColor || '#ffffff'
+      selectedChapterAlign.value = chapter.align || 'left'
+    }
+  } else if (item.type === 'section' && item.sectionId && item.chapterId) {
+    const chapter = projectData.value.chapters.find(ch => ch.id === item.chapterId)
+    const section = chapter?.sections.find(sec => sec.id === item.sectionId)
+    if (section) {
+      selectedSectionName.value = section.name
+      selectedSectionWidth.value = sectionWidth.value
+      selectedSectionHeight.value = sectionHeight.value
+      selectedSectionBorderColor.value = section.borderColor || '#e5e7eb'
+      selectedSectionFillColor.value = section.fillColor || '#ffffff'
+      selectedSectionAlign.value = section.align || 'left'
+    }
+  } else if (item.type === 'node' && item.id) {
+    // 查找节点
+    for (const chapter of projectData.value.chapters) {
+      for (const section of chapter.sections) {
+        const node = section.nodes.find(n => n.id === item.id)
+        if (node) {
+          selectedNodeName.value = node.name
+          selectedNodeContent.value = node.content || ''
+          selectedNodeBorderColor.value = node.borderColor || '#e5e7eb'
+          selectedNodeFillColor.value = node.fillColor || '#ffffff'
+          selectedNodeAlign.value = node.align || 'left'
+          break
+        }
+      }
+    }
+  }
+}
+
+// 更新章节名称
+const updateChapterName = async () => {
+  if (!editingItem.value.chapterId) return
+  try {
+    const { api } = await import('./api.js')
+    await api.updateChapter(currentProjectId.value, editingItem.value.chapterId, {
+      name: selectedChapterName.value
+    })
+    await loadProject()
+  } catch (error) {
+    console.error('Failed to update chapter name:', error)
+  }
+}
+
+// 切换章节布局（循环：row -> column -> free -> row）
+const toggleChapterLayout = async () => {
+  if (!editingItem.value.chapterId) return
+  
+  // 确定下一个布局模式
+  let nextLayout = 'row'
+  if (selectedChapterLayout.value === 'row') {
+    nextLayout = 'column'
+  } else if (selectedChapterLayout.value === 'column') {
+    nextLayout = 'free'
+  } else if (selectedChapterLayout.value === 'free') {
+    nextLayout = 'row'
+  }
+  
+  selectedChapterLayout.value = nextLayout
+  await updateChapterLayout()
+}
+
+// 更新章节布局
+const updateChapterLayout = async () => {
+  if (!editingItem.value.chapterId) return
+  try {
+    const { api } = await import('./api.js')
+    await api.updateChapter(currentProjectId.value, editingItem.value.chapterId, {
+      layout: selectedChapterLayout.value
+    })
+    await loadProject()
+    triggerLayoutUpdate()
+  } catch (error) {
+    console.error('Failed to update chapter layout:', error)
+  }
+}
+
+// 获取布局图标
+const getChapterLayoutIcon = (layout) => {
+  if (layout === 'row') return 'ph ph-rows'
+  if (layout === 'column') return 'ph ph-columns'
+  if (layout === 'free') return 'ph ph-arrows-out'
+  return 'ph ph-rows'
+}
+
+// 获取布局文本
+const getChapterLayoutText = (layout) => {
+  if (layout === 'row') return '行排列'
+  if (layout === 'column') return '列排列'
+  if (layout === 'free') return '编辑模式'
+  return '行排列'
+}
+
+// 更新部分名称
+const updateSectionName = async () => {
+  if (!editingItem.value.sectionId) return
+  try {
+    const { api } = await import('./api.js')
+    await api.updateSection(currentProjectId.value, editingItem.value.sectionId, {
+      name: selectedSectionName.value
+    })
+    await loadProject()
+  } catch (error) {
+    console.error('Failed to update section name:', error)
+  }
+}
+
+// 更新节点名称和内容
+const updateNodeName = async () => {
+  if (!editingItem.value.id || !editingItem.value.sectionId) return
+  try {
+    const { api } = await import('./api.js')
+    await api.updateNode(currentProjectId.value, editingItem.value.id, editingItem.value.sectionId, {
+      name: selectedNodeName.value
+    })
+    await loadProject()
+  } catch (error) {
+    console.error('Failed to update node name:', error)
+  }
+}
+
+const updateNodeContent = async () => {
+  if (!editingItem.value.id || !editingItem.value.sectionId) return
+  try {
+    const { api } = await import('./api.js')
+    await api.updateNode(currentProjectId.value, editingItem.value.id, editingItem.value.sectionId, {
+      content: selectedNodeContent.value
+    })
+    await loadProject()
+  } catch (error) {
+    console.error('Failed to update node content:', error)
+  }
+}
+
+// 更新章节边框颜色
+const updateChapterBorderColor = () => {
+  if (!editingItem.value.chapterId) return
+  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  if (chapter) {
+    chapter.borderColor = selectedChapterBorderColor.value
+    triggerLayoutUpdate()
+  }
+}
+
+// 更新章节填充颜色
+const updateChapterFillColor = () => {
+  if (!editingItem.value.chapterId) return
+  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  if (chapter) {
+    chapter.fillColor = selectedChapterFillColor.value
+    triggerLayoutUpdate()
+  }
+}
+
+// 更新章节对齐方式
+const updateChapterAlign = () => {
+  if (!editingItem.value.chapterId) return
+  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  if (chapter) {
+    chapter.align = selectedChapterAlign.value
+    triggerLayoutUpdate()
+  }
+}
+
+// 更新部分边框颜色
+const updateSectionBorderColor = () => {
+  if (!editingItem.value.sectionId) return
+  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
+  if (section) {
+    section.borderColor = selectedSectionBorderColor.value
+    triggerLayoutUpdate()
+  }
+}
+
+// 更新部分填充颜色
+const updateSectionFillColor = () => {
+  if (!editingItem.value.sectionId) return
+  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
+  if (section) {
+    section.fillColor = selectedSectionFillColor.value
+    triggerLayoutUpdate()
+  }
+}
+
+// 更新部分对齐方式
+const updateSectionAlign = () => {
+  if (!editingItem.value.sectionId) return
+  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
+  if (section) {
+    section.align = selectedSectionAlign.value
+    triggerLayoutUpdate()
+  }
+}
+
+// 更新节点边框颜色
+const updateNodeBorderColor = () => {
+  if (!editingItem.value.id) return
+  for (const chapter of projectData.value.chapters) {
+    for (const section of chapter.sections) {
+      const node = section.nodes.find(n => n.id === editingItem.value.id)
+      if (node) {
+        node.borderColor = selectedNodeBorderColor.value
+        triggerLayoutUpdate()
+        break
+      }
+    }
+  }
+}
+
+// 更新节点填充颜色
+const updateNodeFillColor = () => {
+  if (!editingItem.value.id) return
+  for (const chapter of projectData.value.chapters) {
+    for (const section of chapter.sections) {
+      const node = section.nodes.find(n => n.id === editingItem.value.id)
+      if (node) {
+        node.fillColor = selectedNodeFillColor.value
+        triggerLayoutUpdate()
+        break
+      }
+    }
+  }
+}
+
+// 更新节点对齐方式
+const updateNodeAlign = () => {
+  if (!editingItem.value.id) return
+  for (const chapter of projectData.value.chapters) {
+    for (const section of chapter.sections) {
+      const node = section.nodes.find(n => n.id === editingItem.value.id)
+      if (node) {
+        node.align = selectedNodeAlign.value
+        triggerLayoutUpdate()
+        break
+      }
+    }
+  }
+}
+
+// 监听布局设置变化，保存到 localStorage
+// 触发连接线和节点重绘的函数
+// 全局连接线重绘函数（统一入口）
+const redrawConnections = () => {
+  // 清除所有缓存
+  nodeLocationCache.clear()
+  edgePathCache.clear()
+  cachedCrossEdges = []
+  cachedEdgesHash = ''
+  edgeUpdateTrigger.value++
+}
+
+// 保持 triggerLayoutUpdate 作为别名，用于向后兼容（带延迟）
+const triggerLayoutUpdate = () => {
+  if (!currentProjectId.value) return
+  nextTick(() => {
+    setTimeout(() => {
+      redrawConnections()
+    }, 150) // 延迟150ms，确保节点位置已重新计算
+  })
+}
+
+watch(globalLayout, (newLayout) => {
+  localStorage.setItem('globalLayout', newLayout)
+  triggerLayoutUpdate()
+})
+
+watch(nodeWidth, (newWidth) => {
+  localStorage.setItem('nodeWidth', String(newWidth))
+  triggerLayoutUpdate()
+})
+
+watch(nodeHeight, (newHeight) => {
+  localStorage.setItem('nodeHeight', String(newHeight))
+  triggerLayoutUpdate()
+})
+
+watch(horizontalSpacing, (newSpacing) => {
+  localStorage.setItem('horizontalSpacing', String(newSpacing))
+  triggerLayoutUpdate()
+})
+
+watch(verticalSpacing, (newSpacing) => {
+  localStorage.setItem('verticalSpacing', String(newSpacing))
+  triggerLayoutUpdate()
+})
+
+watch(chapterWidth, (newWidth) => {
+  if (newWidth !== null) {
+    localStorage.setItem('chapterWidth', String(newWidth))
+  } else {
+    localStorage.removeItem('chapterWidth')
+  }
+  triggerLayoutUpdate()
+})
+
+watch(chapterHeight, (newHeight) => {
+  if (newHeight !== null) {
+    localStorage.setItem('chapterHeight', String(newHeight))
+  } else {
+    localStorage.removeItem('chapterHeight')
+  }
+  triggerLayoutUpdate()
+})
+
+watch(sectionWidth, (newWidth) => {
+  if (newWidth !== null) {
+    localStorage.setItem('sectionWidth', String(newWidth))
+  } else {
+    localStorage.removeItem('sectionWidth')
+  }
+  triggerLayoutUpdate()
+})
+
+watch(sectionHeight, (newHeight) => {
+  if (newHeight !== null) {
+    localStorage.setItem('sectionHeight', String(newHeight))
+  } else {
+    localStorage.removeItem('sectionHeight')
+  }
+  triggerLayoutUpdate()
+})
+
+watch(sectionSpacing, (newSpacing) => {
+  localStorage.setItem('sectionSpacing', String(newSpacing))
+  triggerLayoutUpdate()
+})
+
+watch(nodeAlignment, (newAlignment) => {
+  localStorage.setItem('nodeAlignment', newAlignment)
+  triggerLayoutUpdate()
+})
+
+// 切换全局布局
+const toggleGlobalLayout = () => {
+  globalLayout.value = globalLayout.value === 'row' ? 'column' : 'row'
+  // 全局布局切换时，触发所有章节的布局更新
+  triggerLayoutUpdate()
+}
+
+// 重置布局设置
+const resetLayoutSettings = () => {
+  globalLayout.value = 'row'
+  nodeWidth.value = 300
+  nodeHeight.value = 70
+  horizontalSpacing.value = 100
+  verticalSpacing.value = 20
+  chapterWidth.value = null
+  chapterHeight.value = null
+  sectionWidth.value = null
+  sectionHeight.value = null
+  sectionSpacing.value = 12
+  nodeAlignment.value = 'left'
+  // 重置后也会触发更新（通过 watch 自动触发）
+}
 const newChapterName = ref('')
 const showAddChapterModal = ref(false)
 const linkMode = reactive({ source: null, target: null })
@@ -662,10 +1642,7 @@ const loadProject = async () => {
     })
     
     // 清空所有缓存
-    nodeLocationCache.clear()
-    edgePathCache.clear()
-    cachedCrossEdges = []
-    cachedEdgesHash = ''
+    redrawConnections()
     
     // 使用 Object.assign 更新响应式对象
     Object.assign(projectData, {
@@ -685,7 +1662,7 @@ const loadProject = async () => {
     await nextTick()
     // 延迟触发，确保所有节点都已渲染完成
     setTimeout(() => {
-      edgeUpdateTrigger.value++
+      redrawConnections()
     }, 200)
   } catch (e) {
     console.error('Failed to load project:', e)
@@ -877,6 +1854,26 @@ const handleDeleteSection = async (sectionId) => {
   }
 }
 
+const handleChapterUpdated = () => {
+  loadProject()
+  // 布局切换后，延迟触发连接线更新，确保节点位置已重新计算
+  nextTick(() => {
+    setTimeout(() => {
+      redrawConnections()
+    }, 200) // 延迟200ms，确保节点位置已重新计算
+  })
+}
+
+const handleSectionUpdated = () => {
+  loadProject()
+  // 清除缓存并触发连接线更新
+  nextTick(() => {
+    setTimeout(() => {
+      redrawConnections()
+    }, 150)
+  })
+}
+
 const handleAddNode = async ({ chapterId, sectionId, nodeName, nodeContent }) => {
   try {
     await axios.post(`${API_URL}/projects/${currentProjectId.value}/nodes`, {
@@ -955,6 +1952,118 @@ const handleDeleteNode = async (nodeId) => {
     }
     console.error('Delete node error:', e)
     ElMessage.error(e.response?.data?.detail || e.message || '删除节点失败')
+  }
+}
+
+
+const handleSectionReorder = async (data) => {
+  try {
+    const { api } = await import('./api.js')
+    await api.reorderSections(currentProjectId.value, data.chapterId, data.sectionIds)
+    await loadProject()
+  } catch (error) {
+    console.error('Failed to reorder sections:', error)
+  }
+}
+
+const handleChapterReorder = async (data) => {
+  try {
+    const { api } = await import('./api.js')
+    await api.reorderChapters(currentProjectId.value, data.chapterIds)
+    await loadProject()
+  } catch (error) {
+    console.error('Failed to reorder chapters:', error)
+  }
+}
+
+const handleSectionPositionUpdated = async (data) => {
+  // 触发连接线重绘
+  redrawConnections()
+  // 更新 section 位置和尺寸到后端
+  try {
+    // 更新本地数据
+    const chapter = projectData.value.chapters.find(ch => ch.id === data.chapterId)
+    if (chapter) {
+      const section = chapter.sections.find(sec => sec.id === data.sectionId)
+      if (section) {
+        section.x = data.x
+        section.y = data.y
+        if (data.width) section.width = data.width
+        if (data.height) section.height = data.height
+      }
+    }
+    // TODO: 添加后端API来保存 section 的位置和尺寸
+    // const { api } = await import('./api.js')
+    // await api.updateSectionPosition(currentProjectId.value, data.sectionId, data)
+    // 触发连线更新
+    triggerLayoutUpdate()
+  } catch (error) {
+    console.error('Failed to update section position:', error)
+  }
+}
+
+// 处理 section 拖拽过程中的连线更新
+const handleSectionDragging = (data) => {
+  // 更新本地数据
+  const chapter = projectData.value.chapters.find(ch => ch.id === data.chapterId)
+  if (chapter) {
+    const section = chapter.sections.find(sec => sec.id === data.sectionId)
+    if (section) {
+      section.x = data.x
+      section.y = data.y
+    }
+  }
+  
+  // 统一处理：触发连接线更新（与节点拖动类似）
+  if (handleSectionDragging.rafId) {
+    cancelAnimationFrame(handleSectionDragging.rafId)
+  }
+  
+  handleSectionDragging.rafId = requestAnimationFrame(() => {
+    redrawConnections()
+    handleSectionDragging.rafId = null
+  })
+}
+
+const handleSectionSizeUpdated = async (data) => {
+  // 更新 section 尺寸到后端
+  try {
+    // 更新本地数据
+    const chapter = projectData.value.chapters.find(ch => ch.id === data.chapterId)
+    if (chapter) {
+      const section = chapter.sections.find(sec => sec.id === data.sectionId)
+      if (section) {
+        section.width = data.width
+        section.height = data.height
+        if (data.x != null) section.x = data.x
+        if (data.y != null) section.y = data.y
+      }
+    }
+    // TODO: 添加后端API来保存 section 的尺寸
+    // const { api } = await import('./api.js')
+    // await api.updateSectionSize(currentProjectId.value, data.sectionId, data)
+    
+    // 触发连接线重绘
+    redrawConnections()
+  } catch (error) {
+    console.error('Failed to update section size:', error)
+  }
+}
+
+const handleChapterLayoutChange = async (data) => {
+  // 切换章节布局为自由模式
+  try {
+    const { api } = await import('./api.js')
+    await api.updateChapter(currentProjectId.value, data.chapterId, {
+      layout: 'free'
+    })
+    await loadProject()
+    triggerLayoutUpdate()
+    
+    // 触发连接线重绘
+    redrawConnections()
+  } catch (error) {
+    console.error('Failed to change chapter layout:', error)
   }
 }
 
@@ -1396,6 +2505,74 @@ const calculateEdgePath = (edge) => {
   return `M ${sourceEdge.x} ${sourceEdge.y} Q ${controlX} ${controlY} ${targetEdge.x} ${targetEdge.y}`
 }
 
+// 检查鼠标是否在连接线的触发范围内
+const checkEdgeHover = (event, edge) => {
+  const svgElement = event.currentTarget.closest('svg')
+  if (!svgElement) return
+  
+  const canvasContainerEl = canvasContainer.value
+  if (!canvasContainerEl) return
+  
+  const svgRect = svgElement.getBoundingClientRect()
+  
+  // 获取鼠标在 SVG 坐标系中的位置
+  const mouseX = event.clientX - svgRect.left
+  const mouseY = event.clientY - svgRect.top
+  
+  // 获取连接线的路径
+  const sourcePos = getNodeAbsolutePosition(edge.source)
+  const targetPos = getNodeAbsolutePosition(edge.target)
+  
+  if (!sourcePos || !targetPos) return
+  
+  const sourceEdge = getNodeEdgePointCrossChapter(sourcePos, targetPos)
+  const targetEdge = getNodeEdgePointCrossChapter(targetPos, sourcePos)
+  
+  if (!sourceEdge || !targetEdge) return
+  
+  const dx = targetEdge.x - sourceEdge.x
+  const dy = targetEdge.y - sourceEdge.y
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  
+  if (distance === 0) return
+  
+  const controlX = sourceEdge.x + dx / 2
+  const curveAmount = Math.min(Math.abs(dx) * 0.4, distance * 0.35)
+  const controlY = sourceEdge.y + dy / 2 - curveAmount
+  
+  // 计算点到二次贝塞尔曲线的距离
+  // 对于二次贝塞尔曲线 Q(t) = (1-t)²P₀ + 2(1-t)tP₁ + t²P₂
+  // 使用采样法找到最近的点
+  
+  let minDistance = Infinity
+  
+  // 采样曲线上的点，找到距离鼠标最近的点
+  for (let t = 0; t <= 1; t += 0.01) {
+    const x = (1 - t) * (1 - t) * sourceEdge.x + 2 * (1 - t) * t * controlX + t * t * targetEdge.x
+    const y = (1 - t) * (1 - t) * sourceEdge.y + 2 * (1 - t) * t * controlY + t * t * targetEdge.y
+    
+    const dist = Math.sqrt((mouseX - x) ** 2 + (mouseY - y) ** 2)
+    if (dist < minDistance) {
+      minDistance = dist
+    }
+  }
+  
+  // 触发范围：16px（与背景线的 stroke-width 一致）
+  const hoverThreshold = 16
+  
+  // 如果鼠标在触发范围内，设置 hover 状态
+  if (minDistance <= hoverThreshold) {
+    hoveredCrossEdge.value = { source: edge.source, target: edge.target }
+    } else {
+    // 如果不在范围内，清除 hover 状态（但保留当前 hover 的，避免闪烁）
+    if (hoveredCrossEdge.value && 
+        hoveredCrossEdge.value.source === edge.source && 
+        hoveredCrossEdge.value.target === edge.target) {
+      hoveredCrossEdge.value = null
+    }
+  }
+}
+
 // 获取边标签的位置（基于连接线的边缘点，计算贝塞尔曲线上的中点）
 const getEdgeLabelX = (edge) => {
   const sourcePos = getNodeAbsolutePosition(edge.source)
@@ -1660,46 +2837,27 @@ const getEdgeLabelY = (edge) => {
 
 // 处理节点拖拽事件
 const handleNodeDragging = ({ nodeId, x, y }) => {
-  isDraggingNode.value = true
-  draggingNodeId.value = nodeId
-  
-  // 清除相关节点的缓存，强制重新计算位置
-  nodeLocationCache.delete(nodeId)
-  // 清除相关边的路径缓存
-  for (const [key, _] of edgePathCache.entries()) {
-    if (key.includes(nodeId)) {
-      edgePathCache.delete(key)
-    }
+  // 统一处理：触发连接线更新（与 section 拖动类似）
+  if (handleNodeDragging.rafId) {
+    cancelAnimationFrame(handleNodeDragging.rafId)
   }
   
-  // 触发连接线更新（使用 requestAnimationFrame 优化，约 60fps）
-  if (edgePathUpdateTimer) {
-    cancelAnimationFrame(edgePathUpdateTimer)
-  }
-  edgePathUpdateTimer = requestAnimationFrame(() => {
-    edgeUpdateTrigger.value++
+  handleNodeDragging.rafId = requestAnimationFrame(() => {
+    redrawConnections()
+    handleNodeDragging.rafId = null
   })
 }
 
 // 处理节点拖拽结束事件
 const handleNodeDragEnd = ({ nodeId }) => {
-  isDraggingNode.value = false
-  draggingNodeId.value = null
-  
-  // 清除所有缓存，强制重新计算
-  nodeLocationCache.clear()
-  edgePathCache.clear()
-  
-  // 触发连接线更新
-  if (edgePathUpdateTimer) {
-    cancelAnimationFrame(edgePathUpdateTimer)
-    edgePathUpdateTimer = null
+  // 清理动画帧
+  if (handleNodeDragging.rafId) {
+    cancelAnimationFrame(handleNodeDragging.rafId)
+    handleNodeDragging.rafId = null
   }
   
-  // 延迟更新，确保 DOM 已更新
-  requestAnimationFrame(() => {
-    edgeUpdateTrigger.value++
-  })
+  // 立即更新连接线，不使用 requestAnimationFrame（与 section 拖拽结束保持一致，更快）
+  redrawConnections()
 }
 
 
@@ -1828,7 +2986,7 @@ const handleScroll = () => {
   // 防抖：延迟更新，避免频繁计算
   scrollTimer = setTimeout(() => {
     // 触发响应式更新，强制重新计算连接线位置
-    edgeUpdateTrigger.value++
+    redrawConnections()
   }, 50)
 }
 
@@ -1888,7 +3046,7 @@ onUnmounted(() => {
   }
   
   // 清理缓存
-  nodeLocationCache.clear()
+  redrawConnections()
 })
 
 // 使用 shallow watch 减少深度监听的开销，只监听长度变化
@@ -1898,10 +3056,8 @@ watch(() => projectData.chapters?.length, () => {
       debouncedUpdateCanvasSize()
     }
     // 清除缓存并触发连接线更新
-    nodeLocationCache.clear()
-    edgePathCache.clear()
     setTimeout(() => {
-      edgeUpdateTrigger.value++
+      redrawConnections()
     }, 150)
   })
 })
@@ -1913,12 +3069,8 @@ watch(() => projectData.edges?.length, () => {
       debouncedUpdateCanvasSize()
     }
     // 清除缓存并触发连接线更新
-    nodeLocationCache.clear()
-    edgePathCache.clear()
-    cachedCrossEdges = []
-    cachedEdgesHash = ''
     setTimeout(() => {
-      edgeUpdateTrigger.value++
+      redrawConnections()
     }, 150)
   })
 })
@@ -1928,10 +3080,77 @@ watch(() => projectData.chapters, () => {
   nextTick(() => {
     // 延迟触发，确保 DOM 已完全渲染
     setTimeout(() => {
-      edgeUpdateTrigger.value++
+      redrawConnections()
     }, 200)
   })
-}, { deep: true })
+  }, { deep: true })
 </script>
+
+<style scoped>
+/* 布局设置面板滚动条样式 */
+.layout-settings-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.layout-settings-scrollbar::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.layout-settings-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.layout-settings-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* Firefox 滚动条样式 */
+.layout-settings-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 #f8f9fa;
+}
+
+/* 滑块样式优化 */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.slider::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.slider::-moz-range-thumb:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+</style>
 
 

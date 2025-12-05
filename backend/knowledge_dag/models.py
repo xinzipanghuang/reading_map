@@ -27,6 +27,11 @@ class Section(BaseModel):
     id: str = Field(..., description="部分唯一标识")
     name: str = Field(..., min_length=1, max_length=200, description="部分名称")
     nodes: List[Node] = Field(default_factory=list, description="节点列表")
+    position: Optional[float] = Field(default=None, description="部分在章节中的位置索引（用于排序）")
+    x: Optional[float] = Field(default=None, description="部分在章节中的X坐标（像素）")
+    y: Optional[float] = Field(default=None, description="部分在章节中的Y坐标（像素）")
+    width: Optional[float] = Field(default=None, description="部分的宽度（像素，自由布局时使用）")
+    height: Optional[float] = Field(default=None, description="部分的高度（像素，自由布局时使用）")
     
     @field_validator('name')
     @classmethod
@@ -42,6 +47,7 @@ class Chapter(BaseModel):
     id: str = Field(..., description="章节唯一标识")
     name: str = Field(..., min_length=1, max_length=200, description="章节名称")
     sections: List[Section] = Field(default_factory=list, description="部分列表")
+    layout: Optional[str] = Field(default='row', description="布局方式：'row' 行排列，'column' 列排列，'free' 自由布局")
     
     @field_validator('name')
     @classmethod
@@ -50,6 +56,16 @@ class Chapter(BaseModel):
         if not v.strip():
             raise ValueError("章节名称不能为空")
         return v.strip()
+    
+    @field_validator('layout')
+    @classmethod
+    def validate_layout(cls, v: Optional[str]) -> str:
+        """验证布局方式"""
+        if v is None:
+            return 'row'
+        if v not in ['row', 'column', 'free']:
+            raise ValueError("布局方式必须是 'row'、'column' 或 'free'")
+        return v
 
 
 class Edge(BaseModel):
@@ -125,6 +141,41 @@ class AddChapterRequest(BaseModel):
         return v.strip() if v else ""
 
 
+class UpdateChapterRequest(BaseModel):
+    """更新章节请求"""
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="章节名称")
+    layout: Optional[str] = Field(None, description="布局方式：'row' 行排列，'column' 列排列，'free' 自由布局")
+    
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: Optional[str]) -> Optional[str]:
+        """验证章节名称"""
+        if v is not None and not v.strip():
+            raise ValueError("章节名称不能为空")
+        return v.strip() if v else None
+    
+    @field_validator('layout')
+    @classmethod
+    def validate_layout(cls, v: Optional[str]) -> Optional[str]:
+        """验证布局方式"""
+        if v is not None and v not in ['row', 'column', 'free']:
+            raise ValueError("布局方式必须是 'row'、'column' 或 'free'")
+        return v
+
+
+class UpdateSectionRequest(BaseModel):
+    """更新部分请求"""
+    name: str = Field(..., min_length=1, max_length=200, description="部分名称")
+    
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """验证部分名称"""
+        if not v.strip():
+            raise ValueError("部分名称不能为空")
+        return v.strip()
+
+
 class AddSectionRequest(BaseModel):
     """添加部分请求"""
     chapter_id: str = Field(..., description="章节ID")
@@ -169,6 +220,15 @@ class ReorderNodesRequest(BaseModel):
     """重排序节点请求"""
     section_id: str = Field(..., description="部分ID")
     node_ids: List[str] = Field(..., description="节点ID列表，按新顺序排列")
+
+class ReorderSectionsRequest(BaseModel):
+    """重排序部分请求"""
+    chapter_id: str = Field(..., description="章节ID")
+    section_ids: List[str] = Field(..., description="部分ID列表，按新顺序排列")
+
+class ReorderChaptersRequest(BaseModel):
+    """重排序章节请求"""
+    chapter_ids: List[str] = Field(..., description="章节ID列表，按新顺序排列")
 
 
 class UpdateNodePositionRequest(BaseModel):

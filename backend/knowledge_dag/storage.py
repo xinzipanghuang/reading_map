@@ -58,11 +58,31 @@ class Storage:
                     id TEXT NOT NULL,
                     name TEXT NOT NULL,
                     position INTEGER,
+                    x REAL,
+                    y REAL,
                     PRIMARY KEY (project_id, chapter_id, id),
                     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                     FOREIGN KEY (project_id, chapter_id) REFERENCES chapters(project_id, id) ON DELETE CASCADE
                 )
             """)
+            
+            # 数据库迁移：为 sections 表添加 x, y, width, height 列（如果不存在）
+            try:
+                cursor.execute("ALTER TABLE sections ADD COLUMN x REAL")
+            except sqlite3.OperationalError:
+                pass  # 列已存在
+            try:
+                cursor.execute("ALTER TABLE sections ADD COLUMN y REAL")
+            except sqlite3.OperationalError:
+                pass  # 列已存在
+            try:
+                cursor.execute("ALTER TABLE sections ADD COLUMN width REAL")
+            except sqlite3.OperationalError:
+                pass  # 列已存在
+            try:
+                cursor.execute("ALTER TABLE sections ADD COLUMN height REAL")
+            except sqlite3.OperationalError:
+                pass  # 列已存在
             
             # 节点表（使用复合主键确保项目内节点ID唯一）
             cursor.execute("""
@@ -138,6 +158,12 @@ class Storage:
             
             try:
                 cursor.execute("ALTER TABLE nodes ADD COLUMN y REAL")
+            except sqlite3.OperationalError:
+                pass  # 列已存在
+            
+            # 为 chapters 表添加 layout 列（如果不存在）
+            try:
+                cursor.execute("ALTER TABLE chapters ADD COLUMN layout TEXT DEFAULT 'row'")
             except sqlite3.OperationalError:
                 pass  # 列已存在
             
@@ -252,16 +278,63 @@ class Storage:
                             y=y_value
                         ))
                     
+                    # 处理可能不存在的 x, y, width, height 列（兼容旧数据库）
+                    x_value = None
+                    y_value = None
+                    width_value = None
+                    height_value = None
+                    position_value = None
+                    
+                    try:
+                        if 'x' in sec_row.keys() and sec_row['x'] is not None:
+                            x_value = float(sec_row['x'])
+                    except (KeyError, IndexError, ValueError, TypeError):
+                        pass
+                    try:
+                        if 'y' in sec_row.keys() and sec_row['y'] is not None:
+                            y_value = float(sec_row['y'])
+                    except (KeyError, IndexError, ValueError, TypeError):
+                        pass
+                    try:
+                        if 'width' in sec_row.keys() and sec_row['width'] is not None:
+                            width_value = float(sec_row['width'])
+                    except (KeyError, IndexError, ValueError, TypeError):
+                        pass
+                    try:
+                        if 'height' in sec_row.keys() and sec_row['height'] is not None:
+                            height_value = float(sec_row['height'])
+                    except (KeyError, IndexError, ValueError, TypeError):
+                        pass
+                    try:
+                        if 'position' in sec_row.keys() and sec_row['position'] is not None:
+                            position_value = float(sec_row['position'])
+                    except (KeyError, IndexError, ValueError, TypeError):
+                        pass
+                    
                     sections.append(Section(
                         id=section_id,
                         name=sec_row['name'],
+                        position=position_value,
+                        x=x_value,
+                        y=y_value,
+                        width=width_value,
+                        height=height_value,
                         nodes=nodes
                     ))
+                
+                # 处理可能不存在的 layout 列（兼容旧数据库）
+                layout_value = 'row'  # 默认值
+                try:
+                    if 'layout' in ch_row.keys() and ch_row['layout']:
+                        layout_value = ch_row['layout']
+                except (KeyError, IndexError):
+                    pass
                 
                 chapters.append(Chapter(
                     id=chapter_id,
                     name=ch_row['name'],
-                    sections=sections
+                    sections=sections,
+                    layout=layout_value
                 ))
             
             # 加载边
@@ -401,17 +474,18 @@ class Storage:
         saved_node_ids = []
         for ch_idx, chapter in enumerate(project.chapters):
             # 插入章节（使用复合主键：project_id, id）
+            layout_value = chapter.layout if hasattr(chapter, 'layout') and chapter.layout else 'row'
             cursor.execute("""
-                INSERT OR REPLACE INTO chapters (project_id, id, name, position)
-                VALUES (?, ?, ?, ?)
-            """, (project.id, chapter.id, chapter.name, ch_idx))
+                INSERT OR REPLACE INTO chapters (project_id, id, name, position, layout)
+                VALUES (?, ?, ?, ?, ?)
+            """, (project.id, chapter.id, chapter.name, ch_idx, layout_value))
             
             for sec_idx, section in enumerate(chapter.sections):
-                # 插入部分（使用复合主键：project_id, chapter_id, id）
+                # 插入部分（使用复合主键：project_id, chapter_id, id），包含 x, y, width, height
                 cursor.execute("""
-                    INSERT OR REPLACE INTO sections (project_id, chapter_id, id, name, position)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (project.id, chapter.id, section.id, section.name, sec_idx))
+                    INSERT OR REPLACE INTO sections (project_id, chapter_id, id, name, position, x, y, width, height)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (project.id, chapter.id, section.id, section.name, sec_idx, section.x, section.y, section.width, section.height))
                 
                 for node_idx, node in enumerate(section.nodes):
                     # 插入节点（使用复合主键：project_id, chapter_id, section_id, id）

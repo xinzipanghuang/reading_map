@@ -1,9 +1,9 @@
 <template>
   <div
     :class="[
-      'p-2 rounded-lg border-2 bg-white shadow-sm flex items-start space-x-2 min-w-[180px] max-w-[300px] cursor-pointer transition-all duration-200',
+      'p-2 rounded-lg border-2 bg-white shadow-sm flex items-start space-x-2 min-w-[180px] max-w-[300px] cursor-pointer transition-shadow duration-200',
       props.class || (isSelected ? 'ring-2 ring-blue-400 border-blue-500 bg-blue-50' : cardColor),
-      !props.class && !isSelected ? 'hover:shadow-md' : ''
+      !props.class && !isSelected ? 'hover:shadow-lg' : ''
     ]"
     @click="handleClick"
     @dblclick="handleDoubleClick"

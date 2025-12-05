@@ -1,8 +1,8 @@
 <template>
   <svg
     v-if="edges.length > 0"
-    class="absolute inset-0 pointer-events-none z-0"
-    style="overflow: visible;"
+    class="absolute inset-0 pointer-events-none"
+    style="z-index: 5; overflow: visible;"
   >
     <defs>
       <marker

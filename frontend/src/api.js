@@ -26,6 +26,8 @@ export const api = {
   getProject: (id) => axios.get(`${API_URL}/projects/${id}`),
   addChapter: (projectId, chapterName) => 
     axios.post(`${API_URL}/projects/${projectId}/chapters`, { chapter_name: chapterName }),
+  updateChapter: (projectId, chapterId, data) =>
+    axios.put(`${API_URL}/projects/${projectId}/chapters/${chapterId}`, data),
   deleteChapter: (projectId, chapterId) => 
     axios.delete(`${API_URL}/projects/${projectId}/chapters/${chapterId}`),
   addSection: (projectId, chapterId, sectionName) => 
@@ -33,6 +35,8 @@ export const api = {
       chapter_id: chapterId, 
       section_name: sectionName 
     }),
+  updateSection: (projectId, sectionId, name) =>
+    axios.put(`${API_URL}/projects/${projectId}/sections/${sectionId}`, { name }),
   deleteSection: (projectId, sectionId) => 
     axios.delete(`${API_URL}/projects/${projectId}/sections/${sectionId}`),
   addNode: (projectId, chapterId, sectionId, nodeName, nodeContent = '') => 
@@ -52,6 +56,15 @@ export const api = {
     axios.post(`${API_URL}/projects/${projectId}/nodes/reorder`, {
       section_id: sectionId,
       node_ids: nodeIds
+    }),
+  reorderSections: (projectId, chapterId, sectionIds) =>
+    axios.post(`${API_URL}/projects/${projectId}/sections/reorder`, {
+      chapter_id: chapterId,
+      section_ids: sectionIds
+    }),
+  reorderChapters: (projectId, chapterIds) =>
+    axios.post(`${API_URL}/projects/${projectId}/chapters/reorder`, {
+      chapter_ids: chapterIds
     }),
   updateNodePosition: (projectId, nodeId, sectionId, x, y) =>
     axios.put(`${API_URL}/projects/${projectId}/nodes/position`, {

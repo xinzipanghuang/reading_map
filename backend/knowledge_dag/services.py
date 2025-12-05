@@ -9,7 +9,8 @@ from knowledge_dag.models import (
     Project, Chapter, Section, Node, Edge,
     CreateProjectRequest, AddChapterRequest, AddSectionRequest,
     AddNodeRequest, UpdateNodeRequest, AddEdgeRequest, UpdateEdgeRequest,
-    ReorderNodesRequest, UpdateNodePositionRequest
+    ReorderNodesRequest, ReorderSectionsRequest, ReorderChaptersRequest,
+    UpdateNodePositionRequest, UpdateChapterRequest, UpdateSectionRequest
 )
 from knowledge_dag.storage import storage
 
@@ -84,10 +85,73 @@ class ChapterService:
         chapter_name = request.chapter_name.strip() if request.chapter_name.strip() else f"第 {len(project.chapters) + 1} 章"
         
         new_chapter_id = f"ch_{len(project.chapters) + 1}_{int(datetime.now().timestamp())}"
-        new_chapter = Chapter(id=new_chapter_id, name=chapter_name, sections=[])
+        new_chapter = Chapter(id=new_chapter_id, name=chapter_name, sections=[], layout='row')
         project.chapters.append(new_chapter)
         project.updated_at = datetime.now().isoformat()
         
+        storage.update(project)
+        return project
+    
+    @staticmethod
+    def update_chapter(project_id: str, chapter_id: str, request: UpdateChapterRequest) -> Project:
+        """更新章节名称和布局"""
+        project = ProjectService.get_project(project_id)
+        
+        # 找到要更新的章节
+        chapter_to_update = None
+        for chapter in project.chapters:
+            if chapter.id == chapter_id:
+                chapter_to_update = chapter
+                break
+        
+        if not chapter_to_update:
+            raise HTTPException(status_code=404, detail="Chapter not found")
+        
+        # 如果布局改变，清除该章节下所有节点的位置坐标，以便重新计算
+        layout_changed = False
+        if request.layout is not None and chapter_to_update.layout != request.layout:
+            layout_changed = True
+            # 清除该章节下所有节点的 x, y 坐标
+            for section in chapter_to_update.sections:
+                for node in section.nodes:
+                    node.x = None
+                    node.y = None
+        
+        # 更新名称
+        if request.name is not None:
+            chapter_to_update.name = request.name
+        
+        # 更新布局
+        if request.layout is not None:
+            chapter_to_update.layout = request.layout
+        
+        project.updated_at = datetime.now().isoformat()
+        storage.update(project)
+        return project
+    
+    @staticmethod
+    def reorder_chapters(project_id: str, request: ReorderChaptersRequest) -> Project:
+        """重排序章节"""
+        project = ProjectService.get_project(project_id)
+        
+        # 验证所有章节ID都存在
+        existing_chapter_ids = {chapter.id for chapter in project.chapters}
+        if set(request.chapter_ids) != existing_chapter_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Chapter IDs do not match existing chapters in project"
+            )
+        
+        # 创建章节ID到章节的映射
+        chapter_map = {chapter.id: chapter for chapter in project.chapters}
+        
+        # 按照新顺序重新排列章节
+        project.chapters = []
+        for index, chapter_id in enumerate(request.chapter_ids):
+            chapter = chapter_map[chapter_id]
+            project.chapters.append(chapter)
+        
+        project.updated_at = datetime.now().isoformat()
         storage.update(project)
         return project
     
@@ -150,6 +214,74 @@ class SectionService:
         chapter.sections.append(new_section)
         project.updated_at = datetime.now().isoformat()
         
+        storage.update(project)
+        return project
+    
+    @staticmethod
+    def update_section(project_id: str, section_id: str, request: UpdateSectionRequest, chapter_id: Optional[str] = None) -> Project:
+        """更新部分名称"""
+        project = ProjectService.get_project(project_id)
+        
+        # 使用辅助方法查找 section
+        section_location = NodeService._find_section_location(
+            project,
+            section_id,
+            chapter_id=chapter_id
+        )
+        if not section_location:
+            error_msg = f"Section {section_id} not found"
+            if chapter_id:
+                error_msg += f" in chapter {chapter_id}"
+            error_msg += f" in project {project_id}"
+            raise HTTPException(status_code=404, detail=error_msg)
+        
+        section_to_update = section_location["section"]
+        
+        # 如果提供了 chapter_id，进行额外验证
+        if chapter_id and section_location["chapter_id"] != chapter_id:
+            raise HTTPException(status_code=400, detail="Chapter ID mismatch")
+        
+        # 更新名称
+        section_to_update.name = request.name
+        
+        project.updated_at = datetime.now().isoformat()
+        storage.update(project)
+        return project
+    
+    @staticmethod
+    def reorder_sections(project_id: str, request: ReorderSectionsRequest) -> Project:
+        """重排序部分"""
+        project = ProjectService.get_project(project_id)
+        
+        # 找到章节
+        chapter = None
+        for ch in project.chapters:
+            if ch.id == request.chapter_id:
+                chapter = ch
+                break
+        
+        if not chapter:
+            raise HTTPException(status_code=404, detail="Chapter not found")
+        
+        # 验证所有部分ID都存在
+        existing_section_ids = {section.id for section in chapter.sections}
+        if set(request.section_ids) != existing_section_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Section IDs do not match existing sections in chapter"
+            )
+        
+        # 创建部分ID到部分的映射
+        section_map = {section.id: section for section in chapter.sections}
+        
+        # 按照新顺序重新排列部分，并更新位置索引
+        chapter.sections = []
+        for index, section_id in enumerate(request.section_ids):
+            section = section_map[section_id]
+            section.position = float(index)  # 保存位置索引
+            chapter.sections.append(section)
+        
+        project.updated_at = datetime.now().isoformat()
         storage.update(project)
         return project
     
@@ -317,7 +449,7 @@ class NodeService:
                         "chapter_id": chapter.id,
                         "chapter_name": chapter.name,
                         "section": section
-                    }
+                        }
         return None
     
     @staticmethod
