@@ -4,7 +4,7 @@
     <ProjectSidebar
       ref="sidebarRef"
       :projects="projects"
-      :current-project-id="currentProjectId"
+      :current-project-id="projectStore.currentProjectId"
       @project-selected="handleProjectSelected"
       @project-created="handleProjectCreated"
       @project-updated="handleProjectUpdated"
@@ -74,7 +74,7 @@
                   @change="handleFileImport"
                 />
                 <button 
-                  v-if="currentProjectId"
+                  v-if="projectStore.currentProjectId"
                   @click="exportProject(); showDataMenu = false"
                   class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2"
                 >
@@ -245,6 +245,148 @@
         <!-- Sidebar Content -->
         <div class="flex-1 overflow-y-auto layout-settings-scrollbar p-5">
           <div class="space-y-3">
+            <!-- Global Layout Control (全局布局控制，最顶部) -->
+            <div class="border border-blue-300 rounded-lg overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50">
+              <button 
+                @click.stop="expandedSections.globalLayout = !expandedSections.globalLayout"
+                class="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 flex items-center justify-between"
+              >
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-layout text-base text-white"></i>
+                  <span class="text-sm font-bold text-white">全局布局控制</span>
+                </div>
+                <i :class="expandedSections.globalLayout ? 'ph ph-chevron-up text-white' : 'ph ph-chevron-down text-white'"></i>
+              </button>
+              <div v-show="expandedSections.globalLayout" class="p-4 space-y-4 bg-white">
+                <!-- Chapter 排列方式 -->
+                <div>
+                  <label class="text-xs font-medium text-gray-700 mb-2 block">Chapter 排列方式</label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button
+                      @click="globalChapterLayout = 'row'"
+                      class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
+                      :class="globalChapterLayout === 'row' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    >
+                      <i class="ph ph-rows text-lg"></i>
+                      <span>行排列</span>
+                    </button>
+                    <button
+                      @click="globalChapterLayout = 'column'"
+                      class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
+                      :class="globalChapterLayout === 'column' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    >
+                      <i class="ph ph-columns text-lg"></i>
+                      <span>列排列</span>
+                    </button>
+                    <button
+                      @click="globalChapterLayout = 'free'"
+                      class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
+                      :class="globalChapterLayout === 'free' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    >
+                      <i class="ph ph-hand-grabbing text-lg"></i>
+                      <span>自由模式</span>
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">
+                    {{ globalChapterLayout === 'row' ? '章节横向排列，适合宽屏浏览' : globalChapterLayout === 'column' ? '章节纵向排列，均分宽度' : '自由拖动，可自定义位置' }}
+                  </p>
+                </div>
+
+                <!-- 节点排列方式（仅在行列模式下显示） -->
+                <div v-if="globalChapterLayout !== 'free'">
+                  <label class="text-xs font-medium text-gray-700 mb-2 block">节点排列方式</label>
+                  <div class="grid grid-cols-3 gap-2 mb-3">
+                    <button
+                      @click="globalNodeLayout = 'row'"
+                      class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
+                      :class="globalNodeLayout === 'row' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    >
+                      <i class="ph ph-arrow-right text-lg"></i>
+                      <span>横向</span>
+                    </button>
+                    <button
+                      @click="globalNodeLayout = 'column'"
+                      class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
+                      :class="globalNodeLayout === 'column' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    >
+                      <i class="ph ph-arrow-down text-lg"></i>
+                      <span>纵向</span>
+                    </button>
+                    <button
+                      @click="globalNodeLayout = 'wrap'"
+                      class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
+                      :class="globalNodeLayout === 'wrap' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    >
+                      <i class="ph ph-text-align-justify text-lg"></i>
+                      <span>自动换行</span>
+                    </button>
+                  </div>
+                  
+                  <!-- 节点对齐方式 -->
+                  <label class="text-xs font-medium text-gray-700 mb-2 block">节点对齐方式</label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button
+                      @click="globalNodeAlignment = 'flex-start'"
+                      class="px-2 py-1.5 rounded text-xs font-medium transition-all duration-200 flex items-center justify-center gap-1"
+                      :class="globalNodeAlignment === 'flex-start' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      title="左对齐"
+                    >
+                      <i class="ph ph-align-left text-sm"></i>
+                      <span>左对齐</span>
+                    </button>
+                    <button
+                      @click="globalNodeAlignment = 'center'"
+                      class="px-2 py-1.5 rounded text-xs font-medium transition-all duration-200 flex items-center justify-center gap-1"
+                      :class="globalNodeAlignment === 'center' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      title="居中"
+                    >
+                      <i class="ph ph-align-center-horizontal text-sm"></i>
+                      <span>居中</span>
+                    </button>
+                    <button
+                      @click="globalNodeAlignment = 'flex-end'"
+                      class="px-2 py-1.5 rounded text-xs font-medium transition-all duration-200 flex items-center justify-center gap-1"
+                      :class="globalNodeAlignment === 'flex-end' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      title="右对齐"
+                    >
+                      <i class="ph ph-align-right text-sm"></i>
+                      <span>右对齐</span>
+                    </button>
+                    <button
+                      @click="globalNodeAlignment = 'space-between'"
+                      class="px-2 py-1.5 rounded text-xs font-medium transition-all duration-200 flex items-center justify-center gap-1"
+                      :class="globalNodeAlignment === 'space-between' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      title="两端对齐"
+                    >
+                      <i class="ph ph-arrows-left-right text-sm"></i>
+                      <span>Between</span>
+                    </button>
+                    <button
+                      @click="globalNodeAlignment = 'space-around'"
+                      class="px-2 py-1.5 rounded text-xs font-medium transition-all duration-200 flex items-center justify-center gap-1"
+                      :class="globalNodeAlignment === 'space-around' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      title="环绕对齐"
+                    >
+                      <i class="ph ph-arrows-out text-sm"></i>
+                      <span>Around</span>
+                    </button>
+                    <button
+                      @click="globalNodeAlignment = 'space-evenly'"
+                      class="px-2 py-1.5 rounded text-xs font-medium transition-all duration-200 flex items-center justify-center gap-1"
+                      :class="globalNodeAlignment === 'space-evenly' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      title="均匀对齐"
+                    >
+                      <i class="ph ph-arrows-in-line-horizontal text-sm"></i>
+                      <span>Evenly</span>
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">
+                    {{ getNodeAlignmentDescription(globalNodeAlignment) }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <!-- Selected Item Properties (选中项属性，放在最前面) -->
             <div v-if="editingItem.type" class="border border-gray-200 rounded-lg overflow-hidden border-blue-300">
               <button 
@@ -586,21 +728,20 @@
     
     <!-- Canvas Area -->
     <div 
-      class="flex-1 overflow-y-auto overflow-x-hidden p-4 relative transition-all duration-300" 
-      v-if="currentProjectId" 
+      class="flex-1 overflow-auto p-4 relative transition-all duration-300 bg-slate-50" 
+      v-if="projectStore.currentProjectId" 
       ref="canvasContainer"
       :style="{ 
-        width: showLayoutSettings ? `calc(100% - ${layoutSettingsWidth}px)` : '100%',
-        maxWidth: showLayoutSettings ? `calc(100% - ${layoutSettingsWidth}px)` : '100%'
+        width: showLayoutSettings ? `calc(100% - ${layoutSettingsWidth}px)` : '100%'
       }"
+      @scroll="handleScroll"
     >
-        <!-- Connection Lines SVG Overlay (统一处理所有连接) -->
+        <!-- Connection Lines SVG Overlay -->
         <svg
-          v-if="crossChapterEdges.length > 0"
-          class="absolute inset-0 pointer-events-none"
-          style="z-index: 5; overflow: visible;"
-          :width="canvasWidth"
-          :height="canvasHeight"
+          v-if="projectStore.projectData.edges.length > 0"
+          class="absolute inset-0 pointer-events-none z-10 overflow-visible"
+          :width="canvasSize.w"
+          :height="canvasSize.h"
         >
           <defs>
             <marker
@@ -634,7 +775,7 @@
           </defs>
           <!-- 非 hover 状态的边缘（先渲染，在底层） -->
           <g
-            v-for="edge in crossChapterEdges.filter(e => !hoveredCrossEdge || hoveredCrossEdge.source !== e.source || hoveredCrossEdge.target !== e.target)"
+            v-for="edge in (crossChapterEdges || []).filter(e => !hoveredCrossEdge || hoveredCrossEdge.source !== e.source || hoveredCrossEdge.target !== e.target)"
             :key="`${edge.source}-${edge.target}`"
             @click.stop="showEdgeContextMenu($event, edge)"
             @contextmenu.prevent="showEdgeContextMenu($event, edge)"
@@ -702,7 +843,7 @@
           </g>
           <!-- hover 状态的背景线（用于鼠标事件，保留在原 SVG 中） -->
           <g
-            v-for="edge in crossChapterEdges.filter(e => hoveredCrossEdge && hoveredCrossEdge.source === e.source && hoveredCrossEdge.target === e.target)"
+            v-for="edge in (crossChapterEdges || []).filter(e => hoveredCrossEdge && hoveredCrossEdge.source === e.source && hoveredCrossEdge.target === e.target)"
             :key="`hover-bg-${edge.source}-${edge.target}`"
             @click.stop="showEdgeContextMenu($event, edge)"
             @contextmenu.prevent="showEdgeContextMenu($event, edge)"
@@ -723,7 +864,7 @@
         </svg>
         <!-- Hover 状态的连接线和标签层（单独的 SVG，更高的 z-index） -->
         <svg
-          v-if="crossChapterEdges.some(e => hoveredCrossEdge && hoveredCrossEdge.source === e.source && hoveredCrossEdge.target === e.target)"
+          v-if="crossChapterEdges && crossChapterEdges.some(e => hoveredCrossEdge && hoveredCrossEdge.source === e.source && hoveredCrossEdge.target === e.target)"
           class="absolute inset-0 pointer-events-none z-20"
           style="overflow: visible;"
           :width="canvasWidth"
@@ -750,7 +891,7 @@
             </filter>
           </defs>
           <g
-            v-for="edge in crossChapterEdges.filter(e => hoveredCrossEdge && hoveredCrossEdge.source === e.source && hoveredCrossEdge.target === e.target)"
+            v-for="edge in (crossChapterEdges || []).filter(e => hoveredCrossEdge && hoveredCrossEdge.source === e.source && hoveredCrossEdge.target === e.target)"
             :key="`hover-top-${edge.source}-${edge.target}`"
           >
             <!-- 阴影线（hover 时的发光效果） -->
@@ -814,7 +955,7 @@
           </g>
         </svg>
     <!-- Empty State -->
-        <div v-if="projectData.chapters.length === 0" class="text-center py-20">
+        <div v-if="projectStore.projectData.chapters.length === 0" class="text-center py-20">
           <i class="ph ph-graph text-6xl text-gray-300 mb-4"></i>
           <p class="text-gray-500 mb-6">还没有章节，开始添加第一个章节吧</p>
           <div class="flex gap-2 justify-center">
@@ -835,21 +976,24 @@
         </div>
         
         <!-- Chapters -->
-        <div v-if="projectData.chapters && projectData.chapters.length > 0" class="w-[90%] mx-auto space-y-6 px-2">
+        <div v-if="projectStore.projectData.chapters && projectStore.projectData.chapters.length > 0" class="w-[90%] mx-auto space-y-6 px-2">
           <ChapterSection
-            v-for="(chapter, index) in projectData.chapters"
+            v-for="(chapter, index) in projectStore.projectData.chapters"
             :key="chapter.id"
             :chapter="chapter"
             :chapter-index="index + 1"
-            :is-last="index === projectData.chapters.length - 1"
+            :is-last="index === projectStore.projectData.chapters.length - 1"
             :selected-node-id="linkMode.source || linkMode.target"
             :link-source="linkMode.source"
             :link-target="linkMode.target"
-            :edges="projectData.edges"
+            :edges="projectStore.projectData.edges"
             :node-positions="nodePositions"
-            :project-id="currentProjectId"
+            :project-id="projectStore.currentProjectId"
             :color-scheme="colorScheme"
             :global-layout="globalLayout"
+            :global-chapter-layout="globalChapterLayout"
+            :global-node-layout="globalNodeLayout"
+            :global-node-alignment="globalNodeAlignment"
             :node-width="nodeWidth"
             :node-height="nodeHeight"
             :horizontal-spacing="horizontalSpacing"
@@ -878,12 +1022,12 @@
             @section-dragging="handleSectionDragging"
             @section-size-updated="handleSectionSizeUpdated"
             @chapter-layout-change="handleChapterLayoutChange"
-            @chapter-updated="handleChapterUpdated"
-            @section-updated="handleSectionUpdated"
+            @chapter-updated="reloadProject" 
+            @section-updated="reloadProject"
           />
           
           <!-- Add Chapter Button -->
-          <div v-if="projectData.chapters.length > 0" class="flex justify-center">
+          <div v-if="projectStore.projectData.chapters.length > 0" class="flex justify-center">
             <button 
               @click="showAddChapterModal = true"
               class="px-6 py-3 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-600 transition flex items-center gap-2"
@@ -896,7 +1040,7 @@
         </div>
 
       <!-- Empty Project State -->
-    <div v-if="!currentProjectId" class="flex-1 flex items-center justify-center">
+    <div v-if="!projectStore.currentProjectId" class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <i class="ph ph-graph text-6xl text-gray-300 mb-4"></i>
           <p class="text-gray-500">请从左侧选择一个项目或创建新项目</p>
@@ -1023,8 +1167,8 @@
       :visible="showDAGPanel"
       :node-id="selectedNodeForDAG"
       :node-name="selectedNodeNameForDAG"
-      :project-id="currentProjectId"
-      :project-data="projectData"
+      :project-id="projectStore.currentProjectId"
+      :project-data="projectStore.projectData"
       @close="showDAGPanel = false"
     />
     
@@ -1066,9 +1210,17 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import { ElMessageBox, ElMessage } from 'element-plus'
 import axios from 'axios'
 import { api } from './api.js'
+import { useProjectStore } from './stores/projectStore'
+import { useGraphLinks } from './composables/useGraphLinks'
+import { useElementBounding } from '@vueuse/core'
 import ProjectSidebar from './components/ProjectSidebar.vue'
 import ChapterSection from './components/ChapterSection.vue'
 import DAGPanel from './components/DAGPanel.vue'
+
+const projectStore = useProjectStore()
+
+// 使用 Composable 获取计算好的连线
+const { svgEdges } = useGraphLinks()
 
 // 自动检测 API URL：如果设置了环境变量则使用，否则根据当前页面 hostname 自动构建
 const getApiUrl = () => {
@@ -1089,8 +1241,9 @@ const getApiUrl = () => {
 const API_URL = getApiUrl()
 
 const projects = ref([])
-const currentProjectId = ref(null)
-const projectData = reactive({ chapters: [], edges: [] })
+// 使用 projectStore 中的 currentProjectId 和 projectData
+// const currentProjectId = ref(null) // 已迁移到 projectStore
+// const projectData = reactive({ chapters: [], edges: [] }) // 已迁移到 projectStore
 const fileInput = ref(null)
 // 颜色方案：'default' 或 'seaborn-set2'，从 localStorage 读取或使用默认值
 const colorScheme = ref(localStorage.getItem('colorScheme') || 'seaborn-set2')
@@ -1117,8 +1270,14 @@ const sectionHeight = ref(localStorage.getItem('sectionHeight') ? Number(localSt
 const sectionSpacing = ref(Number(localStorage.getItem('sectionSpacing')) || 12)
 const nodeAlignment = ref(localStorage.getItem('nodeAlignment') || 'left')
 
+// 全局布局控制
+const globalChapterLayout = ref(localStorage.getItem('globalChapterLayout') || 'column')
+const globalNodeLayout = ref(localStorage.getItem('globalNodeLayout') || 'wrap')
+const globalNodeAlignment = ref(localStorage.getItem('globalNodeAlignment') || 'flex-start')
+
 // 折叠面板状态
 const expandedSections = ref({
+  globalLayout: true, // 全局布局控制默认展开
   editingItem: true, // 编辑项属性默认展开
   node: true,     // 节点设置默认展开
   section: true,  // 部分设置默认展开
@@ -1163,7 +1322,7 @@ const handleEditItem = (item) => {
   
   // 根据类型加载对应的属性值
   if (item.type === 'chapter' && item.chapterId) {
-    const chapter = projectData.value.chapters.find(ch => ch.id === item.chapterId)
+    const chapter = projectStore.projectData.chapters.find(ch => ch.id === item.chapterId)
     if (chapter) {
       selectedChapterName.value = chapter.name
       selectedChapterLayout.value = chapter.layout || 'row'
@@ -1174,7 +1333,7 @@ const handleEditItem = (item) => {
       selectedChapterAlign.value = chapter.align || 'left'
     }
   } else if (item.type === 'section' && item.sectionId && item.chapterId) {
-    const chapter = projectData.value.chapters.find(ch => ch.id === item.chapterId)
+    const chapter = projectStore.projectData.chapters.find(ch => ch.id === item.chapterId)
     const section = chapter?.sections.find(sec => sec.id === item.sectionId)
     if (section) {
       selectedSectionName.value = section.name
@@ -1186,7 +1345,7 @@ const handleEditItem = (item) => {
     }
   } else if (item.type === 'node' && item.id) {
     // 查找节点
-    for (const chapter of projectData.value.chapters) {
+    for (const chapter of projectStore.projectData.chapters) {
       for (const section of chapter.sections) {
         const node = section.nodes.find(n => n.id === item.id)
         if (node) {
@@ -1207,7 +1366,7 @@ const updateChapterName = async () => {
   if (!editingItem.value.chapterId) return
   try {
     const { api } = await import('./api.js')
-    await api.updateChapter(currentProjectId.value, editingItem.value.chapterId, {
+    await api.updateChapter(projectStore.currentProjectId, editingItem.value.chapterId, {
       name: selectedChapterName.value
     })
     await loadProject()
@@ -1239,7 +1398,7 @@ const updateChapterLayout = async () => {
   if (!editingItem.value.chapterId) return
   try {
     const { api } = await import('./api.js')
-    await api.updateChapter(currentProjectId.value, editingItem.value.chapterId, {
+    await api.updateChapter(projectStore.currentProjectId, editingItem.value.chapterId, {
       layout: selectedChapterLayout.value
     })
     await loadProject()
@@ -1270,7 +1429,7 @@ const updateSectionName = async () => {
   if (!editingItem.value.sectionId) return
   try {
     const { api } = await import('./api.js')
-    await api.updateSection(currentProjectId.value, editingItem.value.sectionId, {
+    await api.updateSection(projectStore.currentProjectId, editingItem.value.sectionId, {
       name: selectedSectionName.value
     })
     await loadProject()
@@ -1284,7 +1443,7 @@ const updateNodeName = async () => {
   if (!editingItem.value.id || !editingItem.value.sectionId) return
   try {
     const { api } = await import('./api.js')
-    await api.updateNode(currentProjectId.value, editingItem.value.id, editingItem.value.sectionId, {
+    await api.updateNode(projectStore.currentProjectId, editingItem.value.id, editingItem.value.sectionId, {
       name: selectedNodeName.value
     })
     await loadProject()
@@ -1297,7 +1456,7 @@ const updateNodeContent = async () => {
   if (!editingItem.value.id || !editingItem.value.sectionId) return
   try {
     const { api } = await import('./api.js')
-    await api.updateNode(currentProjectId.value, editingItem.value.id, editingItem.value.sectionId, {
+    await api.updateNode(projectStore.currentProjectId, editingItem.value.id, editingItem.value.sectionId, {
       content: selectedNodeContent.value
     })
     await loadProject()
@@ -1309,7 +1468,7 @@ const updateNodeContent = async () => {
 // 更新章节边框颜色
 const updateChapterBorderColor = () => {
   if (!editingItem.value.chapterId) return
-  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   if (chapter) {
     chapter.borderColor = selectedChapterBorderColor.value
     triggerLayoutUpdate()
@@ -1319,7 +1478,7 @@ const updateChapterBorderColor = () => {
 // 更新章节填充颜色
 const updateChapterFillColor = () => {
   if (!editingItem.value.chapterId) return
-  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   if (chapter) {
     chapter.fillColor = selectedChapterFillColor.value
     triggerLayoutUpdate()
@@ -1329,7 +1488,7 @@ const updateChapterFillColor = () => {
 // 更新章节对齐方式
 const updateChapterAlign = () => {
   if (!editingItem.value.chapterId) return
-  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   if (chapter) {
     chapter.align = selectedChapterAlign.value
     triggerLayoutUpdate()
@@ -1339,7 +1498,7 @@ const updateChapterAlign = () => {
 // 更新部分边框颜色
 const updateSectionBorderColor = () => {
   if (!editingItem.value.sectionId) return
-  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
   if (section) {
     section.borderColor = selectedSectionBorderColor.value
@@ -1350,7 +1509,7 @@ const updateSectionBorderColor = () => {
 // 更新部分填充颜色
 const updateSectionFillColor = () => {
   if (!editingItem.value.sectionId) return
-  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
   if (section) {
     section.fillColor = selectedSectionFillColor.value
@@ -1361,7 +1520,7 @@ const updateSectionFillColor = () => {
 // 更新部分对齐方式
 const updateSectionAlign = () => {
   if (!editingItem.value.sectionId) return
-  const chapter = projectData.value.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
   if (section) {
     section.align = selectedSectionAlign.value
@@ -1372,7 +1531,7 @@ const updateSectionAlign = () => {
 // 更新节点边框颜色
 const updateNodeBorderColor = () => {
   if (!editingItem.value.id) return
-  for (const chapter of projectData.value.chapters) {
+  for (const chapter of projectStore.projectData.chapters) {
     for (const section of chapter.sections) {
       const node = section.nodes.find(n => n.id === editingItem.value.id)
       if (node) {
@@ -1387,7 +1546,7 @@ const updateNodeBorderColor = () => {
 // 更新节点填充颜色
 const updateNodeFillColor = () => {
   if (!editingItem.value.id) return
-  for (const chapter of projectData.value.chapters) {
+  for (const chapter of projectStore.projectData.chapters) {
     for (const section of chapter.sections) {
       const node = section.nodes.find(n => n.id === editingItem.value.id)
       if (node) {
@@ -1402,7 +1561,7 @@ const updateNodeFillColor = () => {
 // 更新节点对齐方式
 const updateNodeAlign = () => {
   if (!editingItem.value.id) return
-  for (const chapter of projectData.value.chapters) {
+  for (const chapter of projectStore.projectData.chapters) {
     for (const section of chapter.sections) {
       const node = section.nodes.find(n => n.id === editingItem.value.id)
       if (node) {
@@ -1428,12 +1587,41 @@ const redrawConnections = () => {
 
 // 保持 triggerLayoutUpdate 作为别名，用于向后兼容（带延迟）
 const triggerLayoutUpdate = () => {
-  if (!currentProjectId.value) return
+  if (!projectStore.currentProjectId) return
   nextTick(() => {
     setTimeout(() => {
       redrawConnections()
     }, 150) // 延迟150ms，确保节点位置已重新计算
   })
+}
+
+// 监听全局布局控制变化
+watch(globalChapterLayout, (newLayout) => {
+  localStorage.setItem('globalChapterLayout', newLayout)
+  triggerLayoutUpdate()
+})
+
+watch(globalNodeLayout, (newLayout) => {
+  localStorage.setItem('globalNodeLayout', newLayout)
+  triggerLayoutUpdate()
+})
+
+watch(globalNodeAlignment, (newAlignment) => {
+  localStorage.setItem('globalNodeAlignment', newAlignment)
+  triggerLayoutUpdate()
+})
+
+// 获取节点对齐方式描述
+const getNodeAlignmentDescription = (alignment) => {
+  const descriptions = {
+    'flex-start': '节点左对齐',
+    'center': '节点居中对齐',
+    'flex-end': '节点右对齐',
+    'space-between': '节点两端对齐，中间均匀分布',
+    'space-around': '节点环绕对齐，周围均匀分布',
+    'space-evenly': '节点均匀对齐，所有间距相等'
+  }
+  return descriptions[alignment] || '节点对齐方式'
 }
 
 watch(globalLayout, (newLayout) => {
@@ -1539,8 +1727,11 @@ const showDAGPanel = ref(false)
 const selectedNodeForDAG = ref(null)
 const selectedNodeNameForDAG = ref('')
 const canvasContainer = ref(null)
-const canvasWidth = ref(window.innerWidth)
-const canvasHeight = ref(window.innerHeight)
+// 画布相关
+const canvasSize = ref({ w: 3000, h: 3000 }) // 给一个足够大的初始值
+
+// 使用 VueUse 监听画布容器的位置和尺寸
+const { top, left, width, height } = useElementBounding(canvasContainer)
 const editingEdge = ref(null)
 const editEdgeLabel = ref('')
 const nodePositions = ref({})
@@ -1549,7 +1740,7 @@ const edgeContextMenu = ref({ show: false, x: 0, y: 0, edge: null })
 const edgeUpdateTrigger = ref(0)
 
 const currentProject = computed(() => {
-  return projects.value.find(p => p.id === currentProjectId.value)
+  return projects.value.find(p => p.id === projectStore.currentProjectId)
 })
 
 // --- API Calls ---
@@ -1560,7 +1751,7 @@ const fetchProjects = async () => {
     projects.value = res.data
     
     // 如果有项目但没有选中项目，自动选中最近更新的项目
-    if (projects.value.length > 0 && !currentProjectId.value) {
+    if (projects.value.length > 0 && !projectStore.currentProjectId) {
       // 按 updated_at 倒序排序，最新的在前
       const sortedProjects = [...projects.value].sort((a, b) => {
         const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0
@@ -1569,7 +1760,7 @@ const fetchProjects = async () => {
       })
       
       // 选择最近更新的项目
-      currentProjectId.value = sortedProjects[0].id
+      projectStore.currentProjectId = sortedProjects[0].id
       loadProject()
     }
   } catch (e) {
@@ -1578,9 +1769,9 @@ const fetchProjects = async () => {
 }
 
 const loadProject = async () => {
-  if (!currentProjectId.value) return
+  if (!projectStore.currentProjectId) return
   try {
-    const res = await axios.get(`${API_URL}/projects/${currentProjectId.value}`)
+    const res = await axios.get(`${API_URL}/projects/${projectStore.currentProjectId}`)
     console.log('Loaded project response:', res.data)
     
     // 确保 edges 是数组格式
@@ -1644,16 +1835,13 @@ const loadProject = async () => {
     // 清空所有缓存
     redrawConnections()
     
-    // 使用 Object.assign 更新响应式对象
-    Object.assign(projectData, {
-      chapters: data.chapters || [],
-      edges: data.edges || []
-    })
+    // 使用 projectStore.loadProject 加载项目（它会自动更新 projectData）
+    await projectStore.loadProject(projectStore.currentProjectId)
     
     console.log('Project data after assignment:', {
-      chapters: projectData.chapters?.length,
-      edges: projectData.edges?.length,
-      hasChapters: !!projectData.chapters
+      chapters: projectStore.projectData.chapters?.length,
+      edges: projectStore.projectData.edges?.length,
+      hasChapters: !!projectStore.projectData.chapters
     })
     
     resetLinkMode()
@@ -1670,16 +1858,15 @@ const loadProject = async () => {
   }
 }
 
-const handleProjectSelected = (projectId) => {
-  currentProjectId.value = projectId
-  loadProject()
+const handleProjectSelected = async (projectId) => {
+  await projectStore.loadProject(projectId)
 }
 
 const exportProject = async () => {
-  if (!currentProjectId.value) return
+  if (!projectStore.currentProjectId) return
   
   try {
-    const response = await api.exportProject(currentProjectId.value)
+    const response = await api.exportProject(projectStore.currentProjectId)
     
     // 创建下载链接
     const blob = new Blob([response.data], { type: 'application/x-yaml' })
@@ -1754,7 +1941,7 @@ const handleFileImport = async (event) => {
     
     // 自动选择导入的项目
     if (response.data.project.id) {
-      currentProjectId.value = response.data.project.id
+      projectStore.currentProjectId = response.data.project.id
       await loadProject()
     }
     
@@ -1770,10 +1957,9 @@ const handleFileImport = async (event) => {
   }
 }
 
-const handleProjectCreated = (project) => {
+const handleProjectCreated = async (project) => {
   projects.value.push(project)
-  currentProjectId.value = project.id
-  loadProject()
+  await projectStore.loadProject(project.id)
 }
 
 const handleProjectUpdated = ({ id, name }) => {
@@ -1782,7 +1968,7 @@ const handleProjectUpdated = ({ id, name }) => {
     project.name = name
   }
   // 如果当前项目被重命名，更新显示
-  if (currentProjectId.value === id) {
+  if (projectStore.currentProjectId === id) {
     // 触发重新加载以更新 header 中的项目名称
     loadProject()
   }
@@ -1793,24 +1979,24 @@ const handleProjectDeleted = async (projectId) => {
   projects.value = projects.value.filter(p => p.id !== projectId)
   
   // 如果删除的是当前项目，选择其他项目或清空
-  if (currentProjectId.value === projectId) {
+  if (projectStore.currentProjectId === projectId) {
     if (projects.value.length > 0) {
-      currentProjectId.value = projects.value[0].id
+      projectStore.currentProjectId = projects.value[0].id
       await loadProject()
     } else {
-      currentProjectId.value = null
-      projectData.chapters = []
-      projectData.edges = []
+      projectStore.currentProjectId = null
+      projectStore.projectData.chapters = []
+      projectStore.projectData.edges = []
     }
   }
 }
 
 const addChapter = async () => {
-  if (!currentProjectId.value) return
+  if (!projectStore.currentProjectId) return
   
   // 允许空名称，后端会生成默认名称
   try {
-    await axios.post(`${API_URL}/projects/${currentProjectId.value}/chapters`, { 
+    await axios.post(`${API_URL}/projects/${projectStore.currentProjectId}/chapters`, { 
       chapter_name: newChapterName.value.trim()
     })
     newChapterName.value = ''
@@ -1824,7 +2010,7 @@ const addChapter = async () => {
 
 const handleDeleteChapter = async (chapterId) => {
   try {
-    await axios.delete(`${API_URL}/projects/${currentProjectId.value}/chapters/${chapterId}`)
+    await axios.delete(`${API_URL}/projects/${projectStore.currentProjectId}/chapters/${chapterId}`)
     loadProject()
   } catch (e) {
     alert(e.response?.data?.detail || '删除章节失败')
@@ -1833,7 +2019,7 @@ const handleDeleteChapter = async (chapterId) => {
 
 const handleAddSection = async ({ chapterId, sectionName }) => {
   try {
-    await axios.post(`${API_URL}/projects/${currentProjectId.value}/sections`, {
+    await axios.post(`${API_URL}/projects/${projectStore.currentProjectId}/sections`, {
       chapter_id: chapterId,
       section_name: sectionName
     })
@@ -1846,7 +2032,7 @@ const handleAddSection = async ({ chapterId, sectionName }) => {
 
 const handleDeleteSection = async (sectionId) => {
   try {
-    await axios.delete(`${API_URL}/projects/${currentProjectId.value}/sections/${sectionId}`)
+    await axios.delete(`${API_URL}/projects/${projectStore.currentProjectId}/sections/${sectionId}`)
     loadProject()
     ElMessage.success('部分删除成功')
   } catch (e) {
@@ -1854,8 +2040,14 @@ const handleDeleteSection = async (sectionId) => {
   }
 }
 
+const reloadProject = () => {
+  if (projectStore.currentProjectId) {
+    projectStore.loadProject(projectStore.currentProjectId)
+  }
+}
+
 const handleChapterUpdated = () => {
-  loadProject()
+  reloadProject()
   // 布局切换后，延迟触发连接线更新，确保节点位置已重新计算
   nextTick(() => {
     setTimeout(() => {
@@ -1865,7 +2057,7 @@ const handleChapterUpdated = () => {
 }
 
 const handleSectionUpdated = () => {
-  loadProject()
+  reloadProject()
   // 清除缓存并触发连接线更新
   nextTick(() => {
     setTimeout(() => {
@@ -1876,7 +2068,7 @@ const handleSectionUpdated = () => {
 
 const handleAddNode = async ({ chapterId, sectionId, nodeName, nodeContent }) => {
   try {
-    await axios.post(`${API_URL}/projects/${currentProjectId.value}/nodes`, {
+    await axios.post(`${API_URL}/projects/${projectStore.currentProjectId}/nodes`, {
       chapter_id: chapterId,
       section_id: sectionId,
       node_name: nodeName,
@@ -1903,7 +2095,7 @@ const saveNodeEdit = async () => {
   
   try {
     await axios.put(
-      `${API_URL}/projects/${currentProjectId.value}/nodes/${editingNode.value.id}`,
+      `${API_URL}/projects/${projectStore.currentProjectId}/nodes/${editingNode.value.id}`,
       {
         name: nodeName,
         content: editNodeContent.value
@@ -1922,7 +2114,7 @@ const saveNodeEdit = async () => {
 const handleDeleteNode = async (nodeId) => {
   try {
     // 查找节点名称用于确认对话框
-    const node = projectData.value?.chapters
+    const node = projectStore.projectData?.chapters
       ?.flatMap(ch => ch.sections || [])
       .flatMap(sec => sec.nodes || [])
       .find(n => n.id === nodeId)
@@ -1939,7 +2131,7 @@ const handleDeleteNode = async (nodeId) => {
       }
     )
     
-    const response = await axios.delete(`${API_URL}/projects/${currentProjectId.value}/nodes/${nodeId}`)
+    const response = await axios.delete(`${API_URL}/projects/${projectStore.currentProjectId}/nodes/${nodeId}`)
     console.log('Delete node response:', response)
     
     // 重新加载项目数据
@@ -1959,7 +2151,7 @@ const handleDeleteNode = async (nodeId) => {
 const handleSectionReorder = async (data) => {
   try {
     const { api } = await import('./api.js')
-    await api.reorderSections(currentProjectId.value, data.chapterId, data.sectionIds)
+    await api.reorderSections(projectStore.currentProjectId, data.chapterId, data.sectionIds)
     await loadProject()
   } catch (error) {
     console.error('Failed to reorder sections:', error)
@@ -1969,7 +2161,7 @@ const handleSectionReorder = async (data) => {
 const handleChapterReorder = async (data) => {
   try {
     const { api } = await import('./api.js')
-    await api.reorderChapters(currentProjectId.value, data.chapterIds)
+    await api.reorderChapters(projectStore.currentProjectId, data.chapterIds)
     await loadProject()
   } catch (error) {
     console.error('Failed to reorder chapters:', error)
@@ -1982,7 +2174,7 @@ const handleSectionPositionUpdated = async (data) => {
   // 更新 section 位置和尺寸到后端
   try {
     // 更新本地数据
-    const chapter = projectData.value.chapters.find(ch => ch.id === data.chapterId)
+    const chapter = projectStore.projectData.chapters.find(ch => ch.id === data.chapterId)
     if (chapter) {
       const section = chapter.sections.find(sec => sec.id === data.sectionId)
       if (section) {
@@ -1994,7 +2186,7 @@ const handleSectionPositionUpdated = async (data) => {
     }
     // TODO: 添加后端API来保存 section 的位置和尺寸
     // const { api } = await import('./api.js')
-    // await api.updateSectionPosition(currentProjectId.value, data.sectionId, data)
+    // await api.updateSectionPosition(projectStore.currentProjectId, data.sectionId, data)
     // 触发连线更新
     triggerLayoutUpdate()
   } catch (error) {
@@ -2005,7 +2197,7 @@ const handleSectionPositionUpdated = async (data) => {
 // 处理 section 拖拽过程中的连线更新
 const handleSectionDragging = (data) => {
   // 更新本地数据
-  const chapter = projectData.value.chapters.find(ch => ch.id === data.chapterId)
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === data.chapterId)
   if (chapter) {
     const section = chapter.sections.find(sec => sec.id === data.sectionId)
     if (section) {
@@ -2029,7 +2221,7 @@ const handleSectionSizeUpdated = async (data) => {
   // 更新 section 尺寸到后端
   try {
     // 更新本地数据
-    const chapter = projectData.value.chapters.find(ch => ch.id === data.chapterId)
+    const chapter = projectStore.projectData.chapters.find(ch => ch.id === data.chapterId)
     if (chapter) {
       const section = chapter.sections.find(sec => sec.id === data.sectionId)
       if (section) {
@@ -2041,7 +2233,7 @@ const handleSectionSizeUpdated = async (data) => {
     }
     // TODO: 添加后端API来保存 section 的尺寸
     // const { api } = await import('./api.js')
-    // await api.updateSectionSize(currentProjectId.value, data.sectionId, data)
+    // await api.updateSectionSize(projectStore.currentProjectId, data.sectionId, data)
     
     // 触发连接线重绘
     redrawConnections()
@@ -2054,7 +2246,7 @@ const handleChapterLayoutChange = async (data) => {
   // 切换章节布局为自由模式
   try {
     const { api } = await import('./api.js')
-    await api.updateChapter(currentProjectId.value, data.chapterId, {
+    await api.updateChapter(projectStore.currentProjectId, data.chapterId, {
       layout: 'free'
     })
     await loadProject()
@@ -2119,7 +2311,7 @@ const showDAGForNode = (nodeId) => {
 }
 
 const findNodeById = (nodeId) => {
-  for (const chapter of projectData.chapters) {
+  for (const chapter of projectStore.projectData.chapters) {
     for (const section of chapter.sections) {
       for (const node of section.nodes) {
         if (node.id === nodeId) return node
@@ -2156,13 +2348,13 @@ const createEdge = async () => {
     )
     
     console.log('Sending edge creation request:', {
-      projectId: currentProjectId.value,
+      projectId: projectStore.currentProjectId,
       source: linkMode.source,
       target: linkMode.target,
       label: label || ''
     })
     
-    const response = await axios.post(`${API_URL}/projects/${currentProjectId.value}/edges`, {
+    const response = await axios.post(`${API_URL}/projects/${projectStore.currentProjectId}/edges`, {
       source: linkMode.source,
       target: linkMode.target,
       label: label || ''
@@ -2189,7 +2381,7 @@ const resetLinkMode = () => {
 }
 
 const getNodeName = (nodeId) => {
-  for (const chapter of projectData.chapters) {
+  for (const chapter of projectStore.projectData.chapters) {
     for (const section of chapter.sections) {
       for (const node of section.nodes) {
         if (node.id === nodeId) return node.name
@@ -2230,20 +2422,20 @@ const crossChapterEdges = computed(() => {
   // 使用 edgeUpdateTrigger 来触发重新计算位置（滚动时更新）
   edgeUpdateTrigger.value
   
-  if (!projectData.edges || !projectData.chapters || !Array.isArray(projectData.edges) || projectData.edges.length === 0) {
+  if (!projectStore.projectData.edges || !projectStore.projectData.chapters || !Array.isArray(projectStore.projectData.edges) || projectStore.projectData.edges.length === 0) {
     cachedCrossEdges = []
     cachedEdgesHash = ''
     return []
   }
   
   // 计算数据哈希，如果没变化则返回缓存（拖拽时禁用缓存）
-  const edgesHash = JSON.stringify(projectData.edges) + JSON.stringify(projectData.chapters.map(ch => ch.id))
+  const edgesHash = JSON.stringify(projectStore.projectData.edges) + JSON.stringify(projectStore.projectData.chapters.map(ch => ch.id))
   if (!isDraggingNode.value && edgesHash === cachedEdgesHash && cachedCrossEdges.length > 0) {
     return cachedCrossEdges
   }
   
   // 处理所有连接（不再区分是否跨章节）
-  const allEdges = projectData.edges.filter(edge => {
+  const allEdges = projectStore.projectData.edges.filter(edge => {
     // 支持新的 Edge 格式 {source, target, label} 和旧的格式 [source, target]
     const source = edge.source || edge[0]
     const target = edge.target || edge[1]
@@ -2294,8 +2486,8 @@ const crossChapterEdges = computed(() => {
 
 // 查找节点位置
 const findNodeLocation = (nodeId) => {
-  if (!projectData.chapters) return null
-  for (const chapter of projectData.chapters) {
+  if (!projectStore.projectData.chapters) return null
+  for (const chapter of projectStore.projectData.chapters) {
     if (!chapter.sections) continue
     for (const section of chapter.sections) {
       if (!section.nodes) continue
@@ -2896,7 +3088,7 @@ const editEdge = async (edge) => {
       }
     )
     
-    await axios.put(`${API_URL}/projects/${currentProjectId.value}/edges`, {
+    await axios.put(`${API_URL}/projects/${projectStore.currentProjectId}/edges`, {
       source: edge.source,
       target: edge.target,
       label: label || ''
@@ -2925,7 +3117,7 @@ const deleteEdge = async (edge) => {
       }
     )
     
-    await axios.delete(`${API_URL}/projects/${currentProjectId.value}/edges`, {
+    await axios.delete(`${API_URL}/projects/${projectStore.currentProjectId}/edges`, {
       data: {
         source: edge.source,
         target: edge.target
@@ -2977,18 +3169,25 @@ const handleClickOutside = (event) => {
 }
 
 // 滚动处理函数（使用防抖优化性能）
-let scrollTimer = null
+// 核心优化：处理滚动和Resize，同步给 Store
 const handleScroll = () => {
-  // 清除之前的定时器
-  if (scrollTimer) {
-    clearTimeout(scrollTimer)
+  if (!canvasContainer.value) return
+  
+  // 更新 Store 中的画布状态
+  projectStore.updateCanvasState(
+    { top: top.value, left: left.value },
+    { x: canvasContainer.value.scrollLeft, y: canvasContainer.value.scrollTop }
+  )
+  
+  // 动态扩展 SVG 大小以包含滚动区域
+  canvasSize.value = {
+    w: Math.max(canvasContainer.value.scrollWidth, width.value),
+    h: Math.max(canvasContainer.value.scrollHeight, height.value)
   }
-  // 防抖：延迟更新，避免频繁计算
-  scrollTimer = setTimeout(() => {
-    // 触发响应式更新，强制重新计算连接线位置
-    redrawConnections()
-  }, 50)
 }
+
+// 监听容器变化自动更新
+watch([top, left, width, height], handleScroll)
 
 onMounted(() => {
   fetchProjects()
@@ -3050,7 +3249,7 @@ onUnmounted(() => {
 })
 
 // 使用 shallow watch 减少深度监听的开销，只监听长度变化
-watch(() => projectData.chapters?.length, () => {
+watch(() => projectStore.projectData.chapters?.length, () => {
   nextTick(() => {
     if (canvasContainer.value) {
       debouncedUpdateCanvasSize()
@@ -3062,7 +3261,7 @@ watch(() => projectData.chapters?.length, () => {
   })
 })
 
-watch(() => projectData.edges?.length, () => {
+watch(() => projectStore.projectData.edges?.length, () => {
   // 当边数据更新时，重新计算画布尺寸
   nextTick(() => {
     if (canvasContainer.value) {
@@ -3076,7 +3275,7 @@ watch(() => projectData.edges?.length, () => {
 })
 
 // 深度监听章节数据变化，确保连接线及时更新
-watch(() => projectData.chapters, () => {
+watch(() => projectStore.projectData.chapters, () => {
   nextTick(() => {
     // 延迟触发，确保 DOM 已完全渲染
     setTimeout(() => {

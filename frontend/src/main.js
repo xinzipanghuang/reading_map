@@ -1,4 +1,6 @@
+// frontend/src/main.js
 import { createApp } from 'vue'
+import { createPinia } from 'pinia' // [新增]
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
@@ -6,8 +8,9 @@ import './style.css'
 import App from './App.vue'
 
 const app = createApp(App)
+const pinia = createPinia() // [新增]
 
-// 注册 Element Plus
+app.use(pinia) // [新增]
 app.use(ElementPlus)
 
 // 注册所有图标
@@ -16,4 +19,3 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.mount('#app')
-
