@@ -263,7 +263,7 @@
                   <label class="text-xs font-medium text-gray-700 mb-2 block">Chapter 排列方式</label>
                   <div class="grid grid-cols-3 gap-2">
                     <button
-                      @click="globalChapterLayout = 'row'"
+                      @click="setGlobalChapterLayout('row')"
                       class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
                       :class="globalChapterLayout === 'row' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
                     >
@@ -271,7 +271,7 @@
                       <span>行排列</span>
                     </button>
                     <button
-                      @click="globalChapterLayout = 'column'"
+                      @click="setGlobalChapterLayout('column')"
                       class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
                       :class="globalChapterLayout === 'column' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
                     >
@@ -279,7 +279,7 @@
                       <span>列排列</span>
                     </button>
                     <button
-                      @click="globalChapterLayout = 'free'"
+                      @click="setGlobalChapterLayout('free')"
                       class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
                       :class="globalChapterLayout === 'free' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
                     >
@@ -288,7 +288,7 @@
                     </button>
                   </div>
                   <p class="text-xs text-gray-500 mt-2">
-                    {{ globalChapterLayout === 'row' ? '章节横向排列，适合宽屏浏览' : globalChapterLayout === 'column' ? '章节纵向排列，均分宽度' : '自由拖动，可自定义位置' }}
+                    {{ globalChapterLayout === 'row' ? '章节横向排列，适合宽屏浏览。切换会清除所有自定义位置。' : globalChapterLayout === 'column' ? '章节纵向排列，均分宽度。切换会清除所有自定义位置。' : '自由拖动，可自定义位置。拖动时自动切换。' }}
                   </p>
                 </div>
 
@@ -867,8 +867,8 @@
           v-if="crossChapterEdges && crossChapterEdges.some(e => hoveredCrossEdge && hoveredCrossEdge.source === e.source && hoveredCrossEdge.target === e.target)"
           class="absolute inset-0 pointer-events-none z-20"
           style="overflow: visible;"
-          :width="canvasWidth"
-          :height="canvasHeight"
+          :width="canvasSize?.w || 3000"
+          :height="canvasSize?.h || 3000"
         >
           <defs>
             <marker
@@ -1622,6 +1622,39 @@ const getNodeAlignmentDescription = (alignment) => {
     'space-evenly': '节点均匀对齐，所有间距相等'
   }
   return descriptions[alignment] || '节点对齐方式'
+}
+
+// 设置全局 Chapter 布局（会清除所有坐标）
+const setGlobalChapterLayout = async (layout) => {
+  if (globalChapterLayout.value === layout) return
+  
+  // 切换到行/列模式时，清除所有 section 和 node 的坐标（只在前端清除）
+  if (layout === 'row' || layout === 'column') {
+    if (projectStore.projectData && projectStore.projectData.chapters) {
+      // 只在前端清除坐标，不更新后端
+      // 下次拖动时会自动保存新坐标
+      for (const chapter of projectStore.projectData.chapters) {
+        for (const section of chapter.sections) {
+          section.x = null
+          section.y = null
+          section.width = null
+          section.height = null
+          
+          // 清除所有 node 的坐标
+          for (const node of section.nodes) {
+            node.x = null
+            node.y = null
+          }
+        }
+      }
+      
+      ElMessage.success(`已切换为${layout === 'row' ? '行排列' : '列排列'}模式，所有位置已重置`)
+    }
+  } else if (layout === 'free') {
+    ElMessage.info('已切换为自由模式，拖动元素即可自定义位置')
+  }
+  
+  globalChapterLayout.value = layout
 }
 
 watch(globalLayout, (newLayout) => {
@@ -3138,8 +3171,8 @@ const updateCanvasSize = () => {
     return
   }
   try {
-    canvasWidth.value = canvasContainer.value.scrollWidth || window.innerWidth
-    canvasHeight.value = canvasContainer.value.scrollHeight || window.innerHeight
+    // 使用 canvasSize 而不是单独的 canvasWidth/canvasHeight
+    // canvasSize 已经在 handleScroll 中更新
   } catch (e) {
     // 静默处理错误，避免控制台噪音
   }
