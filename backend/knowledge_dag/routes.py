@@ -1,12 +1,12 @@
 """API 路由模块"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import Optional
 
 from knowledge_dag.models import (
     CreateProjectRequest, UpdateProjectRequest, AddChapterRequest, AddSectionRequest,
     AddNodeRequest, UpdateNodeRequest, AddEdgeRequest, UpdateEdgeRequest,
     ReorderNodesRequest, ReorderSectionsRequest, ReorderChaptersRequest,
-    UpdateNodePositionRequest, NodeLocationResponse,
+    UpdateNodePositionRequest, UpdateSectionPositionRequest, NodeLocationResponse,
     UpdateChapterRequest, UpdateSectionRequest
 )
 from knowledge_dag.services import (
@@ -61,6 +61,30 @@ def add_chapter(project_id: str, request: AddChapterRequest):
     return ChapterService.add_chapter(project_id, request)
 
 
+@router.put("/projects/{project_id}/chapters/position")
+async def update_chapter_position(project_id: str, request: Request):
+    """更新章节位置和尺寸（宽容模式，直接读取原始 JSON 避免验证冲突）"""
+    import traceback, json
+    payload = {}
+    try:
+        raw_body = await request.body()
+        try:
+            payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+        except Exception:
+            payload = {}
+        print(f"\n[chapters/position] project_id={project_id}, payload={payload}")
+        return ChapterService.update_chapter_position_payload(project_id, payload)
+    except Exception as e:
+        print(f"\n{'='*60}")
+        print(f"ERROR in update_chapter_position:")
+        print(f"project_id: {project_id}")
+        print(f"payload: {payload}")
+        print(f"Exception: {e}")
+        print(f"Exception type: {type(e)}")
+        traceback.print_exc()
+        print(f"{'='*60}\n")
+        raise
+
 @router.put("/projects/{project_id}/chapters/{chapter_id}")
 def update_chapter(project_id: str, chapter_id: str, request: UpdateChapterRequest):
     """更新章节名称和布局"""
@@ -75,6 +99,31 @@ def reorder_chapters(project_id: str, request: ReorderChaptersRequest):
 def delete_chapter(project_id: str, chapter_id: str):
     """删除章节"""
     return ChapterService.delete_chapter(project_id, chapter_id)
+
+
+@router.put("/projects/{project_id}/sections/position")
+async def update_section_position(project_id: str, request: Request):
+    """更新部分位置和尺寸（宽容模式，直接读取原始 JSON 避免验证冲突）"""
+    import traceback, json
+    payload = {}
+    try:
+        raw_body = await request.body()
+        try:
+            payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+        except Exception:
+            payload = {}
+        print(f"\n[sections/position] project_id={project_id}, payload={payload}")
+        return SectionService.update_section_position_payload(project_id, payload)
+    except Exception as e:
+        print(f"\n{'='*60}")
+        print(f"ERROR in update_section_position:")
+        print(f"project_id: {project_id}")
+        print(f"payload: {payload}")
+        print(f"Exception: {e}")
+        print(f"Exception type: {type(e)}")
+        traceback.print_exc()
+        print(f"{'='*60}\n")
+        raise
 
 
 @router.post("/projects/{project_id}/sections")

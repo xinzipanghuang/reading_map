@@ -61,7 +61,7 @@
             >
             <button 
                   @click="triggerImport(); showDataMenu = false"
-                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition flex items-center gap-2"
                 >
                   <i class="ph ph-upload text-purple-600"></i>
                   <span>导入 YAML</span>
@@ -76,7 +76,7 @@
                 <button 
                   v-if="projectStore.currentProjectId"
                   @click="exportProject(); showDataMenu = false"
-                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition flex items-center gap-2"
+                  class="w-full px-4 py-2 text-left text-xs lg:text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition flex items-center gap-2"
                 >
                   <i class="ph ph-download text-green-600"></i>
                   <span>导出 YAML</span>
@@ -243,19 +243,19 @@
                 </div>
                 
         <!-- Sidebar Content -->
-        <div class="flex-1 overflow-y-auto layout-settings-scrollbar p-5">
+        <div class="flex-1 overflow-y-auto layout-settings-scrollbar p-4">
           <div class="space-y-3">
             <!-- Global Layout Control (全局布局控制，最顶部) -->
-            <div class="border border-blue-300 rounded-lg overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div class="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
               <button 
                 @click.stop="expandedSections.globalLayout = !expandedSections.globalLayout"
-                class="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 flex items-center justify-between"
+                class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-all duration-200 flex items-center justify-between border-b border-gray-200"
               >
                 <div class="flex items-center gap-2">
-                  <i class="ph ph-layout text-base text-white"></i>
-                  <span class="text-sm font-bold text-white">全局布局控制</span>
+                  <i class="ph ph-layout text-base text-gray-700"></i>
+                  <span class="text-sm font-semibold text-gray-800">全局布局控制</span>
                 </div>
-                <i :class="expandedSections.globalLayout ? 'ph ph-chevron-up text-white' : 'ph ph-chevron-down text-white'"></i>
+                <i :class="expandedSections.globalLayout ? 'ph ph-chevron-up text-gray-500' : 'ph ph-chevron-down text-gray-500'"></i>
               </button>
               <div v-show="expandedSections.globalLayout" class="p-4 space-y-4 bg-white">
                 <!-- Chapter 排列方式 -->
@@ -299,7 +299,7 @@
                     <button
                       @click="globalNodeLayout = 'row'"
                       class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
-                      :class="globalNodeLayout === 'row' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      :class="globalNodeLayout === 'row' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
                     >
                       <i class="ph ph-arrow-right text-lg"></i>
                       <span>横向</span>
@@ -307,7 +307,7 @@
                     <button
                       @click="globalNodeLayout = 'column'"
                       class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
-                      :class="globalNodeLayout === 'column' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      :class="globalNodeLayout === 'column' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
                     >
                       <i class="ph ph-arrow-down text-lg"></i>
                       <span>纵向</span>
@@ -315,7 +315,7 @@
                     <button
                       @click="globalNodeLayout = 'wrap'"
                       class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1"
-                      :class="globalNodeLayout === 'wrap' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      :class="globalNodeLayout === 'wrap' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
                     >
                       <i class="ph ph-text-align-justify text-lg"></i>
                       <span>自动换行</span>
@@ -388,20 +388,20 @@
             </div>
 
             <!-- Selected Item Properties (选中项属性，放在最前面) -->
-            <div v-if="editingItem.type" class="border border-gray-200 rounded-lg overflow-hidden border-blue-300">
+            <div v-if="editingItem.type" class="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
               <button 
                 @click.stop="expandedSections.editingItem = !expandedSections.editingItem"
-                class="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-all duration-200 flex items-center justify-between"
+                class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-all duration-200 flex items-center justify-between border-b border-gray-200"
               >
                 <div class="flex items-center gap-2">
-                  <i :class="editingItem.type === 'chapter' ? 'ph ph-book-open text-base text-blue-600' : editingItem.type === 'section' ? 'ph ph-stack text-base text-green-600' : 'ph ph-circle text-base text-purple-600'"></i>
+                  <i :class="editingItem.type === 'chapter' ? 'ph ph-book-open text-base text-blue-600' : editingItem.type === 'section' ? 'ph ph-stack text-base text-blue-600' : 'ph ph-circle text-base text-blue-600'"></i>
                   <span class="text-sm font-semibold text-gray-800">
                     {{ editingItem.type === 'chapter' ? '章节属性' : editingItem.type === 'section' ? '部分属性' : '节点属性' }}
                     </span>
                   </div>
                 <div class="flex items-center gap-2">
                   <button
-                    @click.stop="editingItem = { type: null, id: null, chapterId: null, sectionId: null }"
+                    @click.stop="resetEditingItem()"
                     class="text-gray-400 hover:text-gray-600 hover:bg-white rounded-full p-1 transition"
                     title="关闭编辑"
                   >
@@ -422,15 +422,68 @@
                       class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div>
-                    <label class="text-xs font-medium text-gray-700 mb-2 block">布局方式</label>
-                <button 
-                      @click.stop="toggleChapterLayout"
-                      class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 bg-white hover:border-blue-400 hover:bg-blue-50"
-                >
-                      <i :class="getChapterLayoutIcon(selectedChapterLayout)" class="text-base"></i>
-                      <span>{{ getChapterLayoutText(selectedChapterLayout) }}</span>
-                </button>
+                
+                  <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="text-xs font-medium text-gray-700 mb-2 block">边框颜色</label>
+                        <div class="space-y-2">
+                          <div class="flex items-center gap-2 px-2 py-1.5 border rounded-lg bg-gray-50 shadow-inner">
+                            <input
+                              type="color"
+                              v-model="selectedChapterBorderColor"
+                              @input="updateChapterBorderColor"
+                              class="w-11 h-11 p-0 border-0 bg-transparent cursor-pointer"
+                            />
+                            <span class="text-xs font-mono text-gray-600">{{ selectedChapterBorderColor }}</span>
+                          </div>
+                          <div class="grid grid-cols-6 gap-2">
+                            <button
+                              v-for="c in colorPresets"
+                              :key="'chapter-border-' + c"
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-white shadow ring-1 ring-gray-200 hover:ring-blue-400 transition"
+                              :style="{ background: c }"
+                              @click.stop="selectedChapterBorderColor = c; updateChapterBorderColor()"
+                            ></button>
+                            <button
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 flex items-center justify-center"
+                              @click.stop="selectedChapterBorderColor = '#e5e7eb'; updateChapterBorderColor()"
+                            >重</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="text-xs font-medium text-gray-700 mb-2 block">背景颜色</label>
+                        <div class="space-y-2">
+                          <div class="flex items-center gap-2 px-2 py-1.5 border rounded-lg bg-gray-50 shadow-inner">
+                            <input
+                              type="color"
+                              v-model="selectedChapterFillColor"
+                              @input="updateChapterFillColor"
+                              class="w-11 h-11 p-0 border-0 bg-transparent cursor-pointer"
+                            />
+                            <span class="text-xs font-mono text-gray-600">{{ selectedChapterFillColor }}</span>
+                          </div>
+                          <div class="grid grid-cols-6 gap-2">
+                            <button
+                              v-for="c in colorPresets"
+                              :key="'chapter-bg-' + c"
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-white shadow ring-1 ring-gray-200 hover:ring-blue-400 transition"
+                              :style="{ background: c }"
+                              @click.stop="selectedChapterFillColor = c; updateChapterFillColor()"
+                            ></button>
+                            <button
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 flex items-center justify-center"
+                              @click.stop="selectedChapterFillColor = '#ffffff'; updateChapterFillColor()"
+                            >重</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
               </div>
               
@@ -444,6 +497,68 @@
                       @click.stop
                       class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
+                  </div>
+                  <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="text-xs font-medium text-gray-700 mb-2 block">边框颜色</label>
+                        <div class="space-y-2">
+                          <div class="flex items-center gap-2 px-2 py-1.5 border rounded-lg bg-gray-50 shadow-inner">
+                            <input
+                              type="color"
+                              v-model="selectedSectionBorderColor"
+                              @input="updateSectionBorderColor"
+                              class="w-11 h-11 p-0 border-0 bg-transparent cursor-pointer"
+                            />
+                            <span class="text-xs font-mono text-gray-600">{{ selectedSectionBorderColor }}</span>
+                          </div>
+                          <div class="grid grid-cols-6 gap-2">
+                            <button
+                              v-for="c in colorPresets"
+                              :key="'section-border-' + c"
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-white shadow ring-1 ring-gray-200 hover:ring-blue-400 transition"
+                              :style="{ background: c }"
+                              @click.stop="selectedSectionBorderColor = c; updateSectionBorderColor()"
+                            ></button>
+                            <button
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 flex items-center justify-center"
+                              @click.stop="selectedSectionBorderColor = '#e5e7eb'; updateSectionBorderColor()"
+                            >重</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="text-xs font-medium text-gray-700 mb-2 block">背景颜色</label>
+                        <div class="space-y-2">
+                          <div class="flex items-center gap-2 px-2 py-1.5 border rounded-lg bg-gray-50 shadow-inner">
+                            <input
+                              type="color"
+                              v-model="selectedSectionFillColor"
+                              @input="updateSectionFillColor"
+                              class="w-11 h-11 p-0 border-0 bg-transparent cursor-pointer"
+                            />
+                            <span class="text-xs font-mono text-gray-600">{{ selectedSectionFillColor }}</span>
+                          </div>
+                          <div class="grid grid-cols-6 gap-2">
+                            <button
+                              v-for="c in colorPresets"
+                              :key="'section-bg-' + c"
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-white shadow ring-1 ring-gray-200 hover:ring-blue-400 transition"
+                              :style="{ background: c }"
+                              @click.stop="selectedSectionFillColor = c; updateSectionFillColor()"
+                            ></button>
+                            <button
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 flex items-center justify-center"
+                              @click.stop="selectedSectionFillColor = '#ffffff'; updateSectionFillColor()"
+                            >重</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -468,259 +583,71 @@
                       class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                     ></textarea>
                   </div>
+                  <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="text-xs font-medium text-gray-700 mb-2 block">边框颜色</label>
+                        <div class="space-y-2">
+                          <div class="flex items-center gap-2 px-2 py-1.5 border rounded-lg bg-gray-50 shadow-inner">
+                            <input
+                              type="color"
+                              v-model="selectedNodeBorderColor"
+                              @input="updateNodeBorderColor"
+                              class="w-11 h-11 p-0 border-0 bg-transparent cursor-pointer"
+                            />
+                            <span class="text-xs font-mono text-gray-600">{{ selectedNodeBorderColor }}</span>
+                          </div>
+                          <div class="grid grid-cols-6 gap-2">
+                            <button
+                              v-for="c in colorPresets"
+                              :key="'node-border-' + c"
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-white shadow ring-1 ring-gray-200 hover:ring-blue-400 transition"
+                              :style="{ background: c }"
+                              @click.stop="selectedNodeBorderColor = c; updateNodeBorderColor()"
+                            ></button>
+                            <button
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 flex items-center justify-center"
+                              @click.stop="selectedNodeBorderColor = '#e5e7eb'; updateNodeBorderColor()"
+                            >重</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="text-xs font-medium text-gray-700 mb-2 block">背景颜色</label>
+                        <div class="space-y-2">
+                          <div class="flex items-center gap-2 px-2 py-1.5 border rounded-lg bg-gray-50 shadow-inner">
+                            <input
+                              type="color"
+                              v-model="selectedNodeFillColor"
+                              @input="updateNodeFillColor"
+                              class="w-11 h-11 p-0 border-0 bg-transparent cursor-pointer"
+                            />
+                            <span class="text-xs font-mono text-gray-600">{{ selectedNodeFillColor }}</span>
+                          </div>
+                          <div class="grid grid-cols-6 gap-2">
+                            <button
+                              v-for="c in colorPresets"
+                              :key="'node-bg-' + c"
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-white shadow ring-1 ring-gray-200 hover:ring-blue-400 transition"
+                              :style="{ background: c }"
+                              @click.stop="selectedNodeFillColor = c; updateNodeFillColor()"
+                            ></button>
+                            <button
+                              type="button"
+                              class="w-7 h-7 rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 flex items-center justify-center"
+                              @click.stop="selectedNodeFillColor = '#ffffff'; updateNodeFillColor()"
+                            >重</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               </div>
-              
-            <!-- Node Settings Section (节点设置，最前面，默认展开) -->
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-                <button 
-                @click.stop="expandedSections.node = !expandedSections.node"
-                class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-all duration-200 flex items-center justify-between"
-              >
-                <div class="flex items-center gap-2">
-                  <i class="ph ph-circle text-base text-purple-600"></i>
-                  <span class="text-sm font-semibold text-gray-800">节点设置</span>
-                </div>
-                <i :class="expandedSections.node ? 'ph ph-chevron-up text-gray-500' : 'ph ph-chevron-down text-gray-500'"></i>
-                </button>
-              <div v-show="expandedSections.node" class="p-4 space-y-4 bg-white">
-                <!-- Node Width Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">节点宽度</label>
-                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ nodeWidth }}px</span>
-              </div>
-                  <input
-                    v-model.number="nodeWidth"
-                    type="range"
-                    min="150"
-                    max="500"
-                    step="10"
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-            </div>
-                
-                <!-- Node Height Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">节点高度</label>
-                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ nodeHeight }}px</span>
-          </div>
-                  <input
-                    v-model.number="nodeHeight"
-                    type="range"
-                    min="50"
-                    max="200"
-                    step="5"
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-        </div>
-                
-                <!-- Horizontal Spacing Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">水平间距</label>
-                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ horizontalSpacing }}px</span>
-                  </div>
-                  <input
-                    v-model.number="horizontalSpacing"
-                    type="range"
-                    min="20"
-                    max="300"
-                    step="10"
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-      </div>
-
-                <!-- Vertical Spacing Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">垂直间距</label>
-                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ verticalSpacing }}px</span>
-                  </div>
-                  <input
-                    v-model.number="verticalSpacing"
-                    type="range"
-                    min="10"
-                    max="100"
-                    step="5"
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-                </div>
-                
-                <!-- Node Alignment Selector -->
-                <div>
-                  <label class="text-xs font-medium text-gray-700 mb-2 block">节点排列方式</label>
-                  <select
-                    v-model="nodeAlignment"
-                    @click.stop
-                    class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer"
-                  >
-                    <option value="left">左对齐</option>
-                    <option value="center">居中</option>
-                    <option value="right">右对齐</option>
-                    <option value="justify-between">两端对齐</option>
-                    <option value="space-evenly">均匀分布</option>
-                    <option value="space-around">环绕分布</option>
-                  </select>
-            </div>
-              </div>
-            </div>
-            
-            <!-- Section Settings Section (部分设置，默认展开) -->
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <button 
-                @click.stop="expandedSections.section = !expandedSections.section"
-                class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-all duration-200 flex items-center justify-between"
-              >
-                <div class="flex items-center gap-2">
-                  <i class="ph ph-stack text-base text-green-600"></i>
-                  <span class="text-sm font-semibold text-gray-800">部分设置</span>
-                </div>
-                <i :class="expandedSections.section ? 'ph ph-chevron-up text-gray-500' : 'ph ph-chevron-down text-gray-500'"></i>
-              </button>
-              <div v-show="expandedSections.section" class="p-4 space-y-4 bg-white">
-                <!-- Section Width Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">部分宽度</label>
-                    <span class="text-xs font-semibold" :class="sectionWidth ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'">
-                      {{ sectionWidth || '自动' }}{{ sectionWidth ? 'px' : '' }}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <input 
-                      v-model.number="sectionWidth"
-                      type="range"
-                      min="200"
-                      max="1500"
-                      step="50"
-                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-              <button 
-                      @click.stop="sectionWidth = null"
-                      class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-300 rounded-lg transition whitespace-nowrap"
-                      title="设为自动"
-              >
-                      自动
-              </button>
-            </div>
-                </div>
-                
-                <!-- Section Height Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">部分高度</label>
-                    <span class="text-xs font-semibold" :class="sectionHeight ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'">
-                      {{ sectionHeight || '自动' }}{{ sectionHeight ? 'px' : '' }}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <input
-                      v-model.number="sectionHeight"
-                      type="range"
-                      min="100"
-                      max="1500"
-                      step="50"
-                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                    <button 
-                      @click.stop="sectionHeight = null"
-                      class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-300 rounded-lg transition whitespace-nowrap"
-                      title="设为自动"
-                    >
-                      自动
-                    </button>
-          </div>
-        </div>
-
-                <!-- Section Spacing Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">部分间隔</label>
-                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ sectionSpacing }}px</span>
-                  </div>
-                  <input
-                    v-model.number="sectionSpacing"
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="4"
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <!-- Chapter Settings Section (章节设置，默认展开) -->
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <button 
-                @click.stop="expandedSections.chapter = !expandedSections.chapter"
-                class="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-all duration-200 flex items-center justify-between"
-              >
-                <div class="flex items-center gap-2">
-                  <i class="ph ph-book-open text-base text-blue-600"></i>
-                  <span class="text-sm font-semibold text-gray-800">章节设置</span>
-                </div>
-                <i :class="expandedSections.chapter ? 'ph ph-chevron-up text-gray-500' : 'ph ph-chevron-down text-gray-500'"></i>
-            </button>
-              <div v-show="expandedSections.chapter" class="p-4 space-y-4 bg-white">
-                <!-- Chapter Width Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">章节宽度</label>
-                    <span class="text-xs font-semibold" :class="chapterWidth ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'">
-                      {{ chapterWidth || '自动' }}{{ chapterWidth ? 'px' : '' }}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <input
-                      v-model.number="chapterWidth"
-                      type="range"
-                      min="400"
-                      max="2000"
-                      step="50"
-                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-            <button 
-                      @click.stop="chapterWidth = null"
-                      class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-300 rounded-lg transition whitespace-nowrap"
-                      title="设为自动"
-                    >
-                      自动
-            </button>
-          </div>
-        </div>
-        
-                <!-- Chapter Height Slider -->
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="text-xs font-medium text-gray-700">章节高度</label>
-                    <span class="text-xs font-semibold" :class="chapterHeight ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-gray-100'">
-                      {{ chapterHeight || '自动' }}{{ chapterHeight ? 'px' : '' }}
-          </span>
-        </div>
-                  <div class="flex items-center gap-2">
-                    <input
-                      v-model.number="chapterHeight"
-                      type="range"
-                      min="200"
-                      max="2000"
-                      step="50"
-                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                    <button
-                      @click.stop="chapterHeight = null"
-                      class="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-300 rounded-lg transition whitespace-nowrap"
-                      title="设为自动"
-                    >
-                      自动
-                    </button>
-      </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -728,7 +655,7 @@
     
     <!-- Canvas Area -->
     <div 
-      class="flex-1 overflow-auto p-4 relative transition-all duration-300 bg-slate-50" 
+      class="flex-1 overflow-y-auto overflow-x-hidden p-4 relative transition-all duration-300 bg-slate-50" 
       v-if="projectStore.currentProjectId" 
       ref="canvasContainer"
       :style="{ 
@@ -1015,12 +942,15 @@
             @node-dblclick="showDAGForNode"
             @node-dragging="handleNodeDragging"
             @node-drag-end="handleNodeDragEnd"
+            @update-node-position="handleUpdateNodePosition"
             @edit-item="handleEditItem"
             @section-reorder="handleSectionReorder"
             @chapter-reorder="handleChapterReorder"
             @section-position-updated="handleSectionPositionUpdated"
             @section-dragging="handleSectionDragging"
             @section-size-updated="handleSectionSizeUpdated"
+            @chapter-position-updated="handleChapterPositionUpdated"
+            @chapter-dragging="handleChapterDragging"
             @chapter-layout-change="handleChapterLayoutChange"
             @chapter-updated="reloadProject" 
             @section-updated="reloadProject"
@@ -1171,7 +1101,6 @@
       :project-data="projectStore.projectData"
       @close="showDAGPanel = false"
     />
-    
     <!-- 连接线菜单（点击或右键显示） -->
     <div
       v-if="edgeContextMenu.show"
@@ -1285,12 +1214,16 @@ const expandedSections = ref({
 })
 
 // 选中状态管理
-const editingItem = ref({
+const createEmptyEditingItem = () => ({
   type: null, // 'node' | 'chapter' | 'section'
   id: null,
   chapterId: null,
-  sectionId: null
+  sectionId: null,
+  nodeId: null,
+  data: null
 })
+
+const editingItem = ref(createEmptyEditingItem())
 
 // 选中项的属性编辑
 const selectedChapterName = ref('')
@@ -1310,66 +1243,119 @@ const selectedSectionAlign = ref('left')
 
 const selectedNodeName = ref('')
 const selectedNodeContent = ref('')
+const selectedNodeWidth = ref(300)
+const selectedNodeHeight = ref(70)
 const selectedNodeBorderColor = ref('#e5e7eb')
 const selectedNodeFillColor = ref('#ffffff')
 const selectedNodeAlign = ref('left')
 
+const colorPresets = [
+  '#2563eb', '#0ea5e9', '#14b8a6', '#22c55e',
+  '#84cc16', '#f59e0b', '#ef4444', '#ec4899',
+  '#a855f7', '#6366f1', '#475569', '#94a3b8'
+]
+
 // 处理编辑项事件
 const handleEditItem = (item) => {
-  editingItem.value = { ...item }
-  // 展开编辑面板
-  expandedSections.editingItem = true
-  
-  // 根据类型加载对应的属性值
-  if (item.type === 'chapter' && item.chapterId) {
-    const chapter = projectStore.projectData.chapters.find(ch => ch.id === item.chapterId)
+  const { type, chapterId, sectionId, nodeId, id } = item
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === chapterId)
+  let section = null
+  let targetData = null
+
+  if (type === 'chapter') {
+    targetData = chapter
+  } else if (type === 'section' && chapter) {
+    section = chapter.sections.find(sec => sec.id === sectionId)
+    targetData = section
+  } else if (type === 'node') {
+    // 先用显式的 chapter/section 定位
     if (chapter) {
-      selectedChapterName.value = chapter.name
-      selectedChapterLayout.value = chapter.layout || 'row'
-      selectedChapterWidth.value = chapterWidth.value
-      selectedChapterHeight.value = chapterHeight.value
-      selectedChapterBorderColor.value = chapter.borderColor || '#e5e7eb'
-      selectedChapterFillColor.value = chapter.fillColor || '#ffffff'
-      selectedChapterAlign.value = chapter.align || 'left'
+      section = chapter.sections.find(sec => sec.id === sectionId)
+      if (section) {
+        targetData = section.nodes.find(n => n.id === (nodeId || id))
+      }
     }
-  } else if (item.type === 'section' && item.sectionId && item.chapterId) {
-    const chapter = projectStore.projectData.chapters.find(ch => ch.id === item.chapterId)
-    const section = chapter?.sections.find(sec => sec.id === item.sectionId)
-    if (section) {
-      selectedSectionName.value = section.name
-      selectedSectionWidth.value = sectionWidth.value
-      selectedSectionHeight.value = sectionHeight.value
-      selectedSectionBorderColor.value = section.borderColor || '#e5e7eb'
-      selectedSectionFillColor.value = section.fillColor || '#ffffff'
-      selectedSectionAlign.value = section.align || 'left'
-    }
-  } else if (item.type === 'node' && item.id) {
-    // 查找节点
-    for (const chapter of projectStore.projectData.chapters) {
-      for (const section of chapter.sections) {
-        const node = section.nodes.find(n => n.id === item.id)
-        if (node) {
-          selectedNodeName.value = node.name
-          selectedNodeContent.value = node.content || ''
-          selectedNodeBorderColor.value = node.borderColor || '#e5e7eb'
-          selectedNodeFillColor.value = node.fillColor || '#ffffff'
-          selectedNodeAlign.value = node.align || 'left'
-          break
+    // 兜底：全局搜索节点，防止缺失 chapterId/sectionId 导致找不到
+    if (!targetData) {
+      for (const ch of projectStore.projectData.chapters) {
+        for (const sec of ch.sections) {
+          const node = sec.nodes.find(n => n.id === (nodeId || id))
+          if (node) {
+            targetData = node
+            section = sec
+            item.sectionId = sec.id
+            item.chapterId = ch.id
+            break
+          }
         }
+        if (targetData) break
       }
     }
   }
+
+  if (!targetData) {
+    editingItem.value = createEmptyEditingItem()
+    return
+  }
+
+  editingItem.value = {
+    type,
+    id: nodeId || sectionId || chapterId || id || null,
+    chapterId: item.chapterId || chapter?.id || null,
+    sectionId: item.sectionId || section?.id || null,
+    nodeId: nodeId || null,
+    data: targetData
+  }
+  expandedSections.editingItem = true
+  
+  // 根据类型加载对应的属性值
+  if (type === 'chapter' && targetData) {
+    selectedChapterName.value = targetData.name
+    selectedChapterLayout.value = targetData.layout || 'row'
+    selectedChapterWidth.value = targetData.width || chapterWidth.value
+    selectedChapterHeight.value = targetData.height || chapterHeight.value
+    selectedChapterBorderColor.value = targetData.borderColor || '#e5e7eb'
+    selectedChapterFillColor.value = targetData.backgroundColor || targetData.fillColor || '#ffffff'
+    selectedChapterAlign.value = targetData.align || 'left'
+  } else if (type === 'section' && targetData) {
+    selectedSectionName.value = targetData.name
+    selectedSectionWidth.value = targetData.width || sectionWidth.value
+    selectedSectionHeight.value = targetData.height || sectionHeight.value
+    selectedSectionBorderColor.value = targetData.borderColor || '#e5e7eb'
+    selectedSectionFillColor.value = targetData.backgroundColor || targetData.fillColor || '#ffffff'
+    selectedSectionAlign.value = targetData.align || 'left'
+  } else if (type === 'node' && targetData) {
+    selectedNodeName.value = targetData.name
+    selectedNodeContent.value = targetData.content || ''
+    selectedNodeWidth.value = targetData.width || nodeWidth.value
+    selectedNodeHeight.value = targetData.height || nodeHeight.value
+    selectedNodeBorderColor.value = targetData.borderColor || '#e5e7eb'
+    selectedNodeFillColor.value = targetData.backgroundColor || targetData.fillColor || '#ffffff'
+    selectedNodeAlign.value = targetData.align || 'left'
+  }
+}
+
+const resetEditingItem = () => {
+  editingItem.value = createEmptyEditingItem()
 }
 
 // 更新章节名称
 const updateChapterName = async () => {
   if (!editingItem.value.chapterId) return
+  
+  // 即时更新本地数据
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  if (chapter) {
+    chapter.name = selectedChapterName.value
+    triggerLayoutUpdate()
+  }
+  
+  // 异步保存到后端
   try {
     const { api } = await import('./api.js')
     await api.updateChapter(projectStore.currentProjectId, editingItem.value.chapterId, {
       name: selectedChapterName.value
     })
-    await loadProject()
   } catch (error) {
     console.error('Failed to update chapter name:', error)
   }
@@ -1427,12 +1413,21 @@ const getChapterLayoutText = (layout) => {
 // 更新部分名称
 const updateSectionName = async () => {
   if (!editingItem.value.sectionId) return
+  
+  // 即时更新本地数据
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
+  if (section) {
+    section.name = selectedSectionName.value
+    triggerLayoutUpdate()
+  }
+  
+  // 异步保存到后端
   try {
     const { api } = await import('./api.js')
     await api.updateSection(projectStore.currentProjectId, editingItem.value.sectionId, {
       name: selectedSectionName.value
     })
-    await loadProject()
   } catch (error) {
     console.error('Failed to update section name:', error)
   }
@@ -1441,12 +1436,22 @@ const updateSectionName = async () => {
 // 更新节点名称和内容
 const updateNodeName = async () => {
   if (!editingItem.value.id || !editingItem.value.sectionId) return
+  
+  // 即时更新本地数据
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
+  const node = section?.nodes.find(n => n.id === editingItem.value.id)
+  if (node) {
+    node.name = selectedNodeName.value
+    triggerLayoutUpdate()
+  }
+  
+  // 异步保存到后端
   try {
     const { api } = await import('./api.js')
     await api.updateNode(projectStore.currentProjectId, editingItem.value.id, editingItem.value.sectionId, {
       name: selectedNodeName.value
     })
-    await loadProject()
   } catch (error) {
     console.error('Failed to update node name:', error)
   }
@@ -1454,12 +1459,22 @@ const updateNodeName = async () => {
 
 const updateNodeContent = async () => {
   if (!editingItem.value.id || !editingItem.value.sectionId) return
+  
+  // 即时更新本地数据
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
+  const node = section?.nodes.find(n => n.id === editingItem.value.id)
+  if (node) {
+    node.content = selectedNodeContent.value
+    triggerLayoutUpdate()
+  }
+  
+  // 异步保存到后端
   try {
     const { api } = await import('./api.js')
     await api.updateNode(projectStore.currentProjectId, editingItem.value.id, editingItem.value.sectionId, {
       content: selectedNodeContent.value
     })
-    await loadProject()
   } catch (error) {
     console.error('Failed to update node content:', error)
   }
@@ -1480,6 +1495,7 @@ const updateChapterFillColor = () => {
   if (!editingItem.value.chapterId) return
   const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   if (chapter) {
+    chapter.backgroundColor = selectedChapterFillColor.value
     chapter.fillColor = selectedChapterFillColor.value
     triggerLayoutUpdate()
   }
@@ -1512,6 +1528,7 @@ const updateSectionFillColor = () => {
   const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
   if (section) {
+    section.backgroundColor = selectedSectionFillColor.value
     section.fillColor = selectedSectionFillColor.value
     triggerLayoutUpdate()
   }
@@ -1550,6 +1567,7 @@ const updateNodeFillColor = () => {
     for (const section of chapter.sections) {
       const node = section.nodes.find(n => n.id === editingItem.value.id)
       if (node) {
+        node.backgroundColor = selectedNodeFillColor.value
         node.fillColor = selectedNodeFillColor.value
         triggerLayoutUpdate()
         break
@@ -2180,6 +2198,12 @@ const handleDeleteNode = async (nodeId) => {
   }
 }
 
+// 数值安全转换，避免 undefined/NaN 导致后端校验失败
+const toSafeNumber = (value, fallback = 0) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
 
 const handleSectionReorder = async (data) => {
   try {
@@ -2204,38 +2228,87 @@ const handleChapterReorder = async (data) => {
 const handleSectionPositionUpdated = async (data) => {
   // 触发连接线重绘
   redrawConnections()
-  // 更新 section 位置和尺寸到后端
+  // 🟢 修复：保存到后端（覆盖后端数据），包括高度，自由模式下重新加载数据
+  let payload = null
   try {
-    // 更新本地数据
+    // 🟢 如果 data.height 缺失，尝试从 DOM 读取
+    let sectionHeight = data.height
+    if (sectionHeight == null || !Number.isFinite(sectionHeight)) {
+      const sectionEl = document.querySelector(`[data-section-id="${data.sectionId}"]`)
+      if (sectionEl) {
+        sectionHeight = sectionEl.offsetHeight
+      }
+    }
+    
+    // 保存到后端（无论什么模式都保存，覆盖后端数据）
+    const { api } = await import('./api.js')
+    payload = {
+      section_id: data.sectionId,
+      chapter_id: data.chapterId,
+      x: toSafeNumber(data.x, 0),
+      y: toSafeNumber(data.y, 0)
+    }
+    // 🟢 确保宽度和高度都被保存
+    if (data.width != null && Number.isFinite(data.width)) payload.width = toSafeNumber(data.width, null)
+    if (sectionHeight != null && Number.isFinite(sectionHeight)) payload.height = toSafeNumber(sectionHeight, null)
+    console.info('[section-position] payload (including height)', payload)
+    await api.updateSectionPosition(projectStore.currentProjectId, payload)
+    
+    // 🟢 修改：自由模式下，保存到后端但不重新加载（避免延迟和视觉变化）
+    // 行列模式下，更新本地数据用于显示（但渲染时不使用位置）
+    if (globalChapterLayout.value !== 'free') {
+      // 行列模式下，更新本地数据用于显示（但渲染时不使用位置）
+      const chapter = projectStore.projectData.chapters.find(ch => ch.id === data.chapterId)
+      if (chapter) {
+        const section = chapter.sections.find(sec => sec.id === data.sectionId)
+        if (section) {
+          section.x = toSafeNumber(data.x, 0)
+          section.y = toSafeNumber(data.y, 0)
+          if (data.width != null) section.width = data.width
+          if (data.height != null) section.height = data.height
+        }
+      }
+      // 触发连线更新
+      triggerLayoutUpdate()
+    }
+  } catch (error) {
+    // 详细错误日志
+    const errorDetail = error?.response?.data
+    console.error('Failed to update section position:', {
+      error,
+      response: error?.response,
+      data: errorDetail,
+      detail: errorDetail?.detail,
+      payload
+    })
+    
+    // 格式化错误信息
+    let errorMsg = '保存 Section 位置失败: '
+    if (errorDetail?.detail) {
+      if (Array.isArray(errorDetail.detail)) {
+        errorMsg += errorDetail.detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+      } else {
+        errorMsg += JSON.stringify(errorDetail.detail)
+      }
+    } else {
+      errorMsg += error.message || '未知错误'
+    }
+    ElMessage.error(errorMsg)
+  }
+}
+
+// 处理 section 拖拽过程中的连线更新
+const handleSectionDragging = (data) => {
+  // 🟢 修复：自由模式下不更新本地数据，仅用于连线更新（位置数据完全依赖后端）
+  // 行列模式下可以更新本地数据用于显示（但渲染时不使用位置）
+  if (globalChapterLayout.value !== 'free') {
     const chapter = projectStore.projectData.chapters.find(ch => ch.id === data.chapterId)
     if (chapter) {
       const section = chapter.sections.find(sec => sec.id === data.sectionId)
       if (section) {
         section.x = data.x
         section.y = data.y
-        if (data.width) section.width = data.width
-        if (data.height) section.height = data.height
       }
-    }
-    // TODO: 添加后端API来保存 section 的位置和尺寸
-    // const { api } = await import('./api.js')
-    // await api.updateSectionPosition(projectStore.currentProjectId, data.sectionId, data)
-    // 触发连线更新
-    triggerLayoutUpdate()
-  } catch (error) {
-    console.error('Failed to update section position:', error)
-  }
-}
-
-// 处理 section 拖拽过程中的连线更新
-const handleSectionDragging = (data) => {
-  // 更新本地数据
-  const chapter = projectStore.projectData.chapters.find(ch => ch.id === data.chapterId)
-  if (chapter) {
-    const section = chapter.sections.find(sec => sec.id === data.sectionId)
-    if (section) {
-      section.x = data.x
-      section.y = data.y
     }
   }
   
@@ -2250,6 +2323,91 @@ const handleSectionDragging = (data) => {
   })
 }
 
+// 处理 chapter 拖拽过程中的连线更新
+const handleChapterDragging = (data) => {
+  // 更新本地数据
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === data.chapterId)
+  if (chapter) {
+    chapter.x = data.x
+    chapter.y = data.y
+  }
+  
+  // 统一处理：触发连接线更新
+  if (handleChapterDragging.rafId) {
+    cancelAnimationFrame(handleChapterDragging.rafId)
+  }
+  
+  handleChapterDragging.rafId = requestAnimationFrame(() => {
+    redrawConnections()
+    handleChapterDragging.rafId = null
+  })
+}
+
+// 处理 chapter 位置更新
+const handleChapterPositionUpdated = async (data) => {
+  const { chapterId, x, y, width, height } = data
+  
+  // 更新本地数据
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === chapterId)
+  if (chapter) {
+    chapter.x = toSafeNumber(x, chapter.x ?? 0)
+    chapter.y = toSafeNumber(y, chapter.y ?? 0)
+    if (width != null) chapter.width = toSafeNumber(width, chapter.width ?? null)
+    if (height != null) chapter.height = toSafeNumber(height, chapter.height ?? null)
+  }
+  
+  // 🟢 保存到后端，包括高度
+  try {
+    // 🟢 如果 height 缺失，尝试从 DOM 读取
+    let chapterHeight = height
+    if (chapterHeight == null || !Number.isFinite(chapterHeight)) {
+      const chapterEl = document.querySelector(`[data-chapter-id="${chapterId}"]`)
+      if (chapterEl) {
+        chapterHeight = chapterEl.offsetHeight
+      }
+    }
+    
+    const { api } = await import('./api.js')
+    const payload = {
+      chapter_id: chapterId,
+      x: toSafeNumber(x, chapter?.x ?? 0),
+      y: toSafeNumber(y, chapter?.y ?? 0)
+    }
+    // 🟢 确保宽度和高度都被保存
+    const safeWidth = width != null ? toSafeNumber(width, chapter?.width ?? null) : (chapter?.width ?? null)
+    const safeHeight = chapterHeight != null ? toSafeNumber(chapterHeight, chapter?.height ?? null) : (height != null ? toSafeNumber(height, chapter?.height ?? null) : (chapter?.height ?? null))
+    if (Number.isFinite(safeWidth)) payload.width = safeWidth
+    if (Number.isFinite(safeHeight)) payload.height = safeHeight
+    
+    console.info('[chapter-position] payload (including height)', payload)
+    await api.updateChapterPosition(projectStore.currentProjectId, payload)
+    
+    // 触发连线更新
+    triggerLayoutUpdate()
+  } catch (error) {
+    const errorDetail = error?.response?.data
+    console.error('Failed to update chapter position:', {
+      error,
+      response: error?.response,
+      data: errorDetail,
+      detail: errorDetail?.detail,
+      payload: { chapterId, x, y, width, height }
+    })
+    
+    let errorMsg = '保存 Chapter 位置失败: '
+    if (errorDetail?.detail) {
+      if (Array.isArray(errorDetail.detail)) {
+        errorMsg += errorDetail.detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+      } else {
+        errorMsg += JSON.stringify(errorDetail.detail)
+      }
+    } else {
+      errorMsg += error.message || '未知错误'
+    }
+    ElMessage.error(errorMsg)
+  }
+}
+
 const handleSectionSizeUpdated = async (data) => {
   // 更新 section 尺寸到后端
   try {
@@ -2260,32 +2418,97 @@ const handleSectionSizeUpdated = async (data) => {
       if (section) {
         section.width = data.width
         section.height = data.height
-        if (data.x != null) section.x = data.x
-        if (data.y != null) section.y = data.y
+        if (data.x != null) section.x = toSafeNumber(data.x, section.x ?? 0)
+        if (data.y != null) section.y = toSafeNumber(data.y, section.y ?? 0)
       }
     }
-    // TODO: 添加后端API来保存 section 的尺寸
-    // const { api } = await import('./api.js')
-    // await api.updateSectionSize(projectStore.currentProjectId, data.sectionId, data)
+    
+    // 保存到后端（使用 updateSectionPosition，因为它支持位置和尺寸）
+    const { api } = await import('./api.js')
+    const section = chapter?.sections.find(sec => sec.id === data.sectionId)
+    if (section) {
+      const x = toSafeNumber(section.x, 0)
+      const y = toSafeNumber(section.y, 0)
+      const payload = {
+        section_id: data.sectionId,
+        chapter_id: data.chapterId,
+        x,
+        y
+      }
+      const width = data.width != null ? toSafeNumber(data.width, section.width ?? null) : (section.width ?? null)
+      const height = data.height != null ? toSafeNumber(data.height, section.height ?? null) : (section.height ?? null)
+      if (Number.isFinite(width)) payload.width = width
+      if (Number.isFinite(height)) payload.height = height
+      console.info('[section-size] payload', payload)
+      await api.updateSectionPosition(projectStore.currentProjectId, payload)
+    }
     
     // 触发连接线重绘
     redrawConnections()
   } catch (error) {
     console.error('Failed to update section size:', error)
+    ElMessage.error('保存 Section 尺寸失败: ' + (error.response?.data?.detail || error.message || '未知错误'))
   }
 }
 
 const handleChapterLayoutChange = async (data) => {
-  // 切换章节布局为自由模式
+  // 兼容字符串和对象两种调用
+  const payload = typeof data === 'string' ? { layout: data } : (data || {})
+  const layout = payload.layout || 'free'
+  const chapterId = payload.chapterId
+
+  // 先更新全局布局，确保子组件立即切换到自由模式
+  if (globalChapterLayout.value !== layout) {
+    globalChapterLayout.value = layout
+  }
+
+  // 如果没有章节信息，只更新前端状态
+  if (!chapterId) return
+
   try {
     const { api } = await import('./api.js')
-    await api.updateChapter(projectStore.currentProjectId, data.chapterId, {
-      layout: 'free'
-    })
+    await api.updateChapter(projectStore.currentProjectId, chapterId, { layout })
+    
+    // 🟢 修改：仅在切换到自由模式时，将 Pinia 中的布局数据保存到后端
+    // 🟢 修复：Chapter 使用弹性容器，不需要保存位置，只保存 Section 和 Node 的位置
+    if (layout === 'free') {
+      const chapter = projectStore.projectData.chapters.find(ch => ch.id === chapterId)
+      if (chapter) {
+        // 保存所有 Section 位置
+        for (const section of chapter.sections) {
+          const sectionLayout = projectStore.getRowColumnLayout('section', section.id)
+          if (sectionLayout) {
+            await api.updateSectionPosition(projectStore.currentProjectId, {
+              section_id: section.id,
+              chapter_id: chapterId,
+              x: sectionLayout.x,
+              y: sectionLayout.y,
+              width: sectionLayout.width,
+              height: sectionLayout.height
+            })
+          }
+          
+          // 保存所有 Node 位置
+          for (const node of section.nodes) {
+            const nodeLayout = projectStore.getRowColumnLayout('node', node.id)
+            if (nodeLayout) {
+              await api.updateNodePosition(
+                projectStore.currentProjectId,
+                node.id,
+                section.id,
+                nodeLayout.x,
+                nodeLayout.y,
+                nodeLayout.width,
+                nodeLayout.height
+              )
+            }
+          }
+        }
+      }
+    }
+    
     await loadProject()
     triggerLayoutUpdate()
-    
-    // 触发连接线重绘
     redrawConnections()
   } catch (error) {
     console.error('Failed to change chapter layout:', error)
@@ -3085,6 +3308,62 @@ const handleNodeDragEnd = ({ nodeId }) => {
   redrawConnections()
 }
 
+// 🟢 修复：处理来自子组件的节点位置更新事件
+const handleUpdateNodePosition = async (payload) => {
+  const { chapterId, sectionId, nodeId, position } = payload
+
+  // 🟢 修复：保存到后端（覆盖后端数据），包括高度，自由模式下重新加载数据
+  try {
+    // 🟢 如果 position.height 缺失，尝试从 DOM 读取
+    let nodeHeight = position.height
+    if (nodeHeight == null || !Number.isFinite(nodeHeight)) {
+      const nodeEl = document.querySelector(`[data-node-id="${nodeId}"]`)
+      if (nodeEl) {
+        nodeHeight = nodeEl.offsetHeight
+      }
+    }
+    
+    const { api } = await import('./api.js')
+    // 🟢 确保高度被保存（使用读取到的高度或传入的高度）
+    await api.updateNodePosition(
+      projectStore.currentProjectId,
+      nodeId,
+      sectionId,
+      position.x,
+      position.y,
+      position.width,
+      nodeHeight ?? position.height ?? null
+    )
+    
+    // 🟢 修改：自由模式下，保存到后端但不重新加载（避免延迟和视觉变化）
+    // 行列模式下，更新本地数据用于显示（但渲染时不使用位置）
+    const chapter = projectStore.projectData.chapters.find(ch => ch.id === chapterId)
+    const isFreeMode = chapter?.layout === 'free' || globalNodeLayout.value === 'free'
+    
+    if (!isFreeMode) {
+      // 行列模式下，更新本地数据用于显示（但渲染时不使用位置）
+      if (chapter) {
+        const section = chapter.sections.find(sec => sec.id === sectionId)
+        if (section) {
+          const node = section.nodes.find(n => n.id === nodeId)
+          if (node) {
+            node.x = position.x
+            node.y = position.y
+            node.width = position.width
+            node.height = position.height
+          }
+        }
+      }
+      // 触发布局重算和连线重绘
+      nextTick(() => {
+        triggerLayoutUpdate()
+      })
+    }
+  } catch (error) {
+    console.error('Failed to persist node position:', error)
+    ElMessage.error('保存节点位置失败，请稍后重试')
+  }
+}
 
 // 显示连接线菜单（点击或右键）
 const showEdgeContextMenu = (event, edge) => {
@@ -3193,6 +3472,7 @@ const debouncedUpdateCanvasSize = () => {
 
 let resizeHandler = null
 let mutationObserver = null
+let scrollTimer = null
 
 // 点击外部关闭右键菜单
 const handleClickOutside = (event) => {
@@ -3258,8 +3538,7 @@ onUnmounted(() => {
   // 清理滚动监听器
   if (canvasContainer.value) {
     canvasContainer.value.removeEventListener('scroll', handleScroll)
-  }
-  // 清理滚动定时器
+  }  // 清理滚动定时器
   if (scrollTimer) {
     clearTimeout(scrollTimer)
     scrollTimer = null
@@ -3384,5 +3663,3 @@ watch(() => projectStore.projectData.chapters, () => {
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
 }
 </style>
-
-

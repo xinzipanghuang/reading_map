@@ -12,6 +12,8 @@ class Node(BaseModel):
     position: Optional[float] = Field(default=None, description="节点在section中的位置索引（用于排序）")
     x: Optional[float] = Field(default=None, description="节点在section中的X坐标（像素）")
     y: Optional[float] = Field(default=None, description="节点在section中的Y坐标（像素）")
+    width: Optional[float] = Field(default=None, description="节点宽度（像素，自由布局时使用）")
+    height: Optional[float] = Field(default=None, description="节点高度（像素，自由布局时使用）")
     
     @field_validator('name')
     @classmethod
@@ -48,6 +50,10 @@ class Chapter(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="章节名称")
     sections: List[Section] = Field(default_factory=list, description="部分列表")
     layout: Optional[str] = Field(default='row', description="布局方式：'row' 行排列，'column' 列排列，'free' 自由布局")
+    x: Optional[float] = Field(default=None, description="章节在项目中的X坐标（像素）")
+    y: Optional[float] = Field(default=None, description="章节在项目中的Y坐标（像素）")
+    width: Optional[float] = Field(default=None, description="章节的宽度（像素，自由布局时使用）")
+    height: Optional[float] = Field(default=None, description="章节的高度（像素，自由布局时使用）")
     
     @field_validator('name')
     @classmethod
@@ -176,6 +182,84 @@ class UpdateSectionRequest(BaseModel):
         return v.strip()
 
 
+class UpdateChapterPositionRequest(BaseModel):
+    """更新章节位置请求"""
+    chapter_id: Optional[str] = Field(default=None, description="章节ID")
+    x: Optional[float] = Field(default=0, description="X坐标（像素）")
+    y: Optional[float] = Field(default=0, description="Y坐标（像素）")
+    width: Optional[float] = Field(default=None, description="章节宽度（像素）")
+    height: Optional[float] = Field(default=None, description="章节高度（像素）")
+    
+    @field_validator("x", "y", mode="before")
+    @classmethod
+    def validate_coord(cls, v):
+        """验证坐标，转换失败时返回 0"""
+        if v is None:
+            return 0
+        try:
+            num = float(v)
+            if num != num:  # NaN 检查
+                return 0
+            return num
+        except (TypeError, ValueError):
+            return 0
+
+    @field_validator("width", "height", mode="before")
+    @classmethod
+    def validate_size(cls, v):
+        """验证尺寸，转换失败时返回 None"""
+        if v is None:
+            return None
+        try:
+            num = float(v)
+            if num != num:  # NaN 检查
+                return None
+            return num
+        except (TypeError, ValueError):
+            return None
+
+
+class UpdateSectionPositionRequest(BaseModel):
+    """更新部分位置请求"""
+    section_id: Optional[str] = Field(default=None, description="部分ID")
+    chapter_id: Optional[str] = Field(default=None, description="章节ID")
+    # 坐标默认 0，宽高可空
+    x: float = Field(default=0, description="X坐标（像素）")
+    y: float = Field(default=0, description="Y坐标（像素）")
+    width: Optional[float] = Field(default=None, description="部分宽度（像素）")
+    height: Optional[float] = Field(default=None, description="部分高度（像素）")
+
+    @field_validator("x", "y", mode="before")
+    @classmethod
+    def validate_coords(cls, v):
+        """验证坐标，转换失败时返回 0"""
+        if v is None:
+            return 0
+        try:
+            num = float(v)
+            # 检查 NaN
+            if num != num:  # NaN 检查
+                return 0
+            return num
+        except (TypeError, ValueError):
+            return 0
+
+    @field_validator("width", "height", mode="before")
+    @classmethod
+    def validate_size(cls, v):
+        """验证尺寸，转换失败时返回 None"""
+        if v is None:
+            return None
+        try:
+            num = float(v)
+            # 检查 NaN
+            if num != num:  # NaN 检查
+                return None
+            return num
+        except (TypeError, ValueError):
+            return None
+
+
 class AddSectionRequest(BaseModel):
     """添加部分请求"""
     chapter_id: str = Field(..., description="章节ID")
@@ -238,6 +322,8 @@ class UpdateNodePositionRequest(BaseModel):
     chapter_id: Optional[str] = Field(None, description="章节ID（可选，用于验证）")
     x: float = Field(..., description="X坐标（像素）")
     y: float = Field(..., description="Y坐标（像素）")
+    width: Optional[float] = Field(None, description="节点宽度（像素）")
+    height: Optional[float] = Field(None, description="节点高度（像素）")
 
 
 class AddEdgeRequest(BaseModel):

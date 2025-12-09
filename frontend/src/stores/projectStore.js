@@ -15,6 +15,14 @@ export const useProjectStore = defineStore('project', () => {
   // 画布容器的视口信息
   const canvasRect = ref({ top: 0, left: 0 })
   const canvasScroll = ref({ x: 0, y: 0 })
+  
+  // 🟢 新增：行列模式下的布局缓存（用于自由模式加载）
+  // 结构：{ chapterId: { x, y, width, height }, sectionId: { x, y, width, height }, nodeId: { x, y, width, height } }
+  const rowColumnLayoutCache = reactive({
+    chapters: new Map(), // Map<chapterId, {x, y, width, height}>
+    sections: new Map(), // Map<sectionId, {x, y, width, height}>
+    nodes: new Map()     // Map<nodeId, {x, y, width, height}>
+  })
 
   // --- Actions ---
   
@@ -72,13 +80,47 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  // 🟢 新增：保存行列模式下的布局到缓存
+  const saveRowColumnLayout = (type, id, layout) => {
+    if (type === 'chapter') {
+      rowColumnLayoutCache.chapters.set(id, layout)
+    } else if (type === 'section') {
+      rowColumnLayoutCache.sections.set(id, layout)
+    } else if (type === 'node') {
+      rowColumnLayoutCache.nodes.set(id, layout)
+    }
+  }
+  
+  // 🟢 新增：从缓存获取布局
+  const getRowColumnLayout = (type, id) => {
+    if (type === 'chapter') {
+      return rowColumnLayoutCache.chapters.get(id) || null
+    } else if (type === 'section') {
+      return rowColumnLayoutCache.sections.get(id) || null
+    } else if (type === 'node') {
+      return rowColumnLayoutCache.nodes.get(id) || null
+    }
+    return null
+  }
+  
+  // 🟢 新增：清除布局缓存
+  const clearRowColumnLayout = () => {
+    rowColumnLayoutCache.chapters.clear()
+    rowColumnLayoutCache.sections.clear()
+    rowColumnLayoutCache.nodes.clear()
+  }
+
   return {
     currentProjectId,
     projectData,
     nodeLayoutMap,
+    rowColumnLayoutCache,
     loadProject,
     updateNodeLayout,
     updateCanvasState,
-    getNodeRelativePosition
+    getNodeRelativePosition,
+    saveRowColumnLayout,
+    getRowColumnLayout,
+    clearRowColumnLayout
   }
 })

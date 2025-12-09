@@ -108,13 +108,15 @@
     </div>
 
     <!-- New Project Modal -->
-    <div
-      v-if="showNewProjectModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="showNewProjectModal = false"
-    >
-      <div class="bg-white p-6 rounded-lg w-96 shadow-xl">
-        <h3 class="text-lg font-bold mb-4">新建项目</h3>
+    <Teleport to="body">
+      <div
+        v-if="showNewProjectModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[99999]"
+        @click.self="showNewProjectModal = false"
+        style="z-index: 99999;"
+      >
+        <div class="bg-white p-6 rounded-lg w-96 shadow-xl" style="z-index: 100000;">
+          <h3 class="text-lg font-bold mb-4">新建项目</h3>
         <input
           v-model="newProjectName"
           @keyup.enter="createProject"
@@ -135,16 +137,19 @@
             创建
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </Teleport>
 
     <!-- Rename Project Modal -->
-    <div
-      v-if="isRenameModalVisible"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="isRenameModalVisible = false; renamingProject = null; renameProjectName = ''"
-    >
-      <div class="bg-white p-6 rounded-lg w-96 shadow-xl">
+    <Teleport to="body">
+      <div
+        v-if="isRenameModalVisible"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+        style="z-index: 99999;"
+        @click.self="isRenameModalVisible = false; renamingProject = null; renameProjectName = ''"
+      >
+        <div class="bg-white p-6 rounded-lg w-96 shadow-xl" style="z-index: 100000;">
         <h3 class="text-lg font-bold mb-4">重命名项目</h3>
         <input
           v-model="renameProjectName"
@@ -166,13 +171,14 @@
             保存
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, Teleport } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 

@@ -10,7 +10,8 @@ from knowledge_dag.models import (
     CreateProjectRequest, AddChapterRequest, AddSectionRequest,
     AddNodeRequest, UpdateNodeRequest, AddEdgeRequest, UpdateEdgeRequest,
     ReorderNodesRequest, ReorderSectionsRequest, ReorderChaptersRequest,
-    UpdateNodePositionRequest, UpdateChapterRequest, UpdateSectionRequest
+    UpdateNodePositionRequest, UpdateSectionPositionRequest, UpdateChapterRequest, UpdateSectionRequest,
+    UpdateChapterPositionRequest
 )
 from knowledge_dag.storage import storage
 
@@ -128,6 +129,68 @@ class ChapterService:
         project.updated_at = datetime.now().isoformat()
         storage.update(project)
         return project
+    
+    @staticmethod
+    def update_chapter_position(project_id: str, chapter_id: str, x: Optional[float] = None, 
+                                y: Optional[float] = None, width: Optional[float] = None, 
+                                height: Optional[float] = None) -> Project:
+        """更新章节位置和尺寸"""
+        project = ProjectService.get_project(project_id)
+        
+        # 找到要更新的章节
+        chapter_to_update = None
+        for chapter in project.chapters:
+            if chapter.id == chapter_id:
+                chapter_to_update = chapter
+                break
+        
+        if not chapter_to_update:
+            raise HTTPException(status_code=404, detail="Chapter not found")
+        
+        # 更新位置和尺寸
+        if x is not None:
+            chapter_to_update.x = x
+        if y is not None:
+            chapter_to_update.y = y
+        if width is not None:
+            chapter_to_update.width = width
+        if height is not None:
+            chapter_to_update.height = height
+        
+        project.updated_at = datetime.now().isoformat()
+        storage.update(project)
+        return project
+    
+    @staticmethod
+    def update_chapter_position_payload(project_id: str, payload: dict) -> Project:
+        """更新章节位置（宽容模式，直接读取原始 JSON）"""
+        chapter_id = payload.get('chapter_id')
+        if not chapter_id:
+            raise HTTPException(status_code=400, detail="chapter_id is required")
+        
+        x = payload.get('x')
+        y = payload.get('y')
+        width = payload.get('width')
+        height = payload.get('height')
+        
+        # 转换为安全数字
+        def to_safe_float(v, default=None):
+            if v is None:
+                return default
+            try:
+                num = float(v)
+                if num != num:  # NaN
+                    return default
+                return num
+            except (TypeError, ValueError):
+                return default
+        
+        x = to_safe_float(x, 0)
+        y = to_safe_float(y, 0)
+        width = to_safe_float(width, None)
+        height = to_safe_float(height, None)
+        
+        return ChapterService.update_chapter_position(project_id, chapter_id, x, y, width, height)
     
     @staticmethod
     def reorder_chapters(project_id: str, request: ReorderChaptersRequest) -> Project:
@@ -284,6 +347,93 @@ class SectionService:
         project.updated_at = datetime.now().isoformat()
         storage.update(project)
         return project
+    
+    @staticmethod
+    def update_section_position(project_id: str, request: UpdateSectionPositionRequest) -> Project:
+        """更新部分位置和尺寸"""
+        project = ProjectService.get_project(project_id)
+
+        # 基本参数校验（避免 422，改为 400）
+        if not request.section_id or not request.chapter_id:
+            raise HTTPException(status_code=400, detail="section_id and chapter_id are required")
+        # 坐标兜底
+        x = request.x if request.x is not None else 0
+        y = request.y if request.y is not None else 0
+        w = request.width
+        h = request.height
+        
+        # 查找章节
+        chapter = None
+        for ch in project.chapters:
+            if ch.id == request.chapter_id:
+                chapter = ch
+                break
+        
+        if not chapter:
+            raise HTTPException(status_code=404, detail="Chapter not found")
+        
+        # 查找部分
+        section = None
+        for sec in chapter.sections:
+            if sec.id == request.section_id:
+                section = sec
+                break
+        
+        if not section:
+            raise HTTPException(status_code=404, detail="Section not found in the specified chapter")
+        
+        # 更新位置和尺寸
+        section.x = x
+        section.y = y
+        if w is not None:
+            section.width = w
+        if h is not None:
+            section.height = h
+        
+        project.updated_at = datetime.now().isoformat()
+        storage.update(project)
+        return project
+
+    @staticmethod
+    def update_section_position_payload(project_id: str, payload: dict) -> Project:
+        """宽容模式：从原始 payload 中提取坐标，避免前端格式问题导致 422"""
+        try:
+            section_id = payload.get("section_id") or payload.get("sectionId")
+            chapter_id = payload.get("chapter_id") or payload.get("chapterId")
+            x = payload.get("x", 0)
+            y = payload.get("y", 0)
+            w = payload.get("width", None)
+            h = payload.get("height", None)
+
+            # 类型转换，容错
+            def to_float(val, default=None):
+                if val is None:
+                    return default
+                try:
+                    num = float(val)
+                    if num != num:  # NaN
+                        return default
+                    return num
+                except (TypeError, ValueError):
+                    return default
+
+            x = to_float(x, 0)
+            y = to_float(y, 0)
+            w = to_float(w, None)
+            h = to_float(h, None)
+
+            req = UpdateSectionPositionRequest(
+                section_id=section_id,
+                chapter_id=chapter_id,
+                x=x,
+                y=y,
+                width=w,
+                height=h
+            )
+            return SectionService.update_section_position(project_id, req)
+        except Exception as e:
+            print("\n[update_section_position_payload] failed with payload:", payload)
+            raise
     
     @staticmethod
     def delete_section(project_id: str, section_id: str, chapter_id: Optional[str] = None) -> Project:
@@ -577,6 +727,10 @@ class NodeService:
         node = location["node"]
         node.x = request.x
         node.y = request.y
+        if request.width is not None:
+            node.width = request.width
+        if request.height is not None:
+            node.height = request.height
         
         project.updated_at = datetime.now().isoformat()
         storage.update(project)

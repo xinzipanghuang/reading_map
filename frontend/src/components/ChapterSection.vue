@@ -1,7 +1,10 @@
 <template>
   <div
+    ref="chapterRef"
     :class="[
-      'relative p-3 rounded-2xl border-2 transition cursor-move',
+      'relative p-4 rounded-lg border border-gray-200 bg-white shadow-sm transition',
+      // 核心修复：自由模式下章节不允许拖动，移除 cursor-move
+      chapterLayout === 'free' ? 'cursor-default' : 'cursor-move',
       isHexColor(chapterColor.border) ? '' : chapterColor.border,
       isHexColor(chapterColor.bg) ? '' : chapterColor.bg
     ]"
@@ -12,7 +15,7 @@
     <!-- Chapter Badge -->
     <div
       :class="[
-        'absolute -left-3 top-6 px-2 py-1 text-xs font-bold rounded shadow-sm',
+        'absolute -left-3 top-6 px-2.5 py-1 text-xs font-semibold rounded-lg shadow-sm border border-gray-200',
         isHexColor(chapterColor.badgeBg) ? '' : chapterColor.badgeBg,
         isHexColor(chapterColor.badgeText) ? '' : chapterColor.badgeText
       ]"
@@ -64,13 +67,15 @@
 
     <!-- Sections -->
     <div 
+      ref="sectionsContainerRef"
       :class="[
         'flex',
-        chapterLayout === 'row' ? 'flex-col' : chapterLayout === 'column' ? 'flex-row flex-wrap' : 'relative'
+        chapterLayout === 'row' ? 'flex-col' : chapterLayout === 'column' ? 'flex-row flex-wrap items-start' : 'relative'
       ]"
       :style="{
         gap: chapterLayout === 'free' ? '0' : `${props.sectionSpacing}px`,
-        minHeight: chapterLayout === 'free' ? '400px' : undefined
+        //  行列模式下移除 minHeight，防止父级撑大
+        minHeight: chapterLayout === 'free' ? '400px' : 'auto'
       }"
     >
       <div
@@ -78,23 +83,13 @@
         :key="section.id"
         :data-section-id="section.id"
         :class="[
-          'bg-white p-2 rounded-lg border-2 shadow-sm cursor-move transition',
+          'bg-white p-3 rounded-lg border border-gray-200 shadow-sm cursor-move transition',
           chapterLayout === 'free' ? 'absolute' : '',
           chapterLayout === 'row' ? 'w-full' : '',
           chapterLayout === 'column' ? 'flex-1 min-w-[300px]' : '',
-          'border-gray-200',
-          draggingSectionId === section.id ? 'opacity-50 scale-95' : 'hover:shadow-md'
+          draggingSectionId === section.id ? 'opacity-50 scale-95' : 'hover:shadow-md hover:border-gray-300'
         ]"
-        :style="{
-          width: chapterLayout === 'row' ? '100%' : (chapterLayout === 'free' && section.width ? `${section.width}px` : (props.sectionWidth ? `${props.sectionWidth}px` : undefined)),
-          minWidth: chapterLayout === 'row' ? undefined : (chapterLayout === 'column' ? undefined : (props.sectionWidth ? `${props.sectionWidth}px` : undefined)),
-          minHeight: section.height ? `${section.height}px` : (props.sectionHeight ? `${props.sectionHeight}px` : undefined),
-          marginTop: (chapterLayout === 'row' && index > 0 && draggingSectionId !== section.id) ? `${props.sectionSpacing}px` : undefined,
-          position: (chapterLayout === 'free' || (isDraggingSection && section.x != null)) ? 'absolute' : undefined,
-          zIndex: draggingSectionId === section.id ? 100 : (chapterLayout === 'free' ? 1 : undefined),
-          left: (chapterLayout === 'free' || (isDraggingSection && section.x != null)) && section.x != null ? `${section.x}px` : undefined,
-          top: (chapterLayout === 'free' || (isDraggingSection && section.x != null)) && section.y != null ? `${section.y}px` : undefined
-        }"
+        :style="getSectionStyle(section, index)"
         @mousedown="(e) => handleSectionMouseDown(e, section.id, index)"
       >
         <!-- Resize Handles -->
@@ -190,18 +185,35 @@
           <!-- Nodes -->
           <div
             v-for="(node, idx) in section.nodes"
-            :key="`${node.id}-${layoutKey}`"
+            :key="node.id"
             :ref="(el) => registerNodeRef(node.id, el, section.id)"
             :data-node-id="node.id"
             :class="[
-              nodeLayout === 'free' ? 'absolute' : '',
+              //  只有在真正的自由模式下，或者是正在拖拽时，才加 absolute
+              ((nodeLayout === 'free' || chapterLayout === 'free') || draggingNodeId === node.id) ? 'absolute' : '',
               draggingNodeId === node.id 
-                ? 'opacity-50 scale-95 cursor-grabbing' 
-                : 'cursor-grab'
+                ? 'opacity-90 z-50' 
+                : ''
             ]"
             :style="{
-              ...(nodeLayout === 'free' ? getNodeStyle(node, section.id) : {}),
-              zIndex: draggingNodeId === node.id ? 20 : (nodeLayout === 'free' ? 15 : undefined)
+              //  核心修复：拖拽时优先使用 dragStartNodeStyle
+              // 这解决了行列模式下，初始拖拽没有坐标导致跳变/无法移动的问题
+              ...(draggingNodeId === node.id 
+                  ? dragStartNodeStyle 
+                  : getNodeStyle(node, section.id)
+              ),
+              
+              // 核心修复：拖拽时必须禁用 transition，否则会跟手不灵敏
+              transition: draggingNodeId === node.id ? 'none' : 'box-shadow 0.2s, transform 0.1s, left 0.2s, top 0.2s',
+              
+              //  position 逻辑：拖拽时强制 absolute
+              position: (
+                draggingNodeId === node.id || 
+                ((nodeLayout === 'free' || chapterLayout === 'free') && node.x != null)
+              ) ? 'absolute' : undefined,
+              
+              // z-index
+              zIndex: draggingNodeId === node.id ? 100 : ((nodeLayout === 'free' || chapterLayout === 'free') ? 15 : undefined)
             }"
             @mousedown="(e) => handleMouseDown(e, node.id, idx, section.id)"
           >
@@ -213,18 +225,20 @@
               :text-color="isHexColor(chapterColor.text) ? chapterColor.text : undefined"
               :text-color-class="!isHexColor(chapterColor.text) ? chapterColor.text : undefined"
               :is-selected="isNodeSelected(node.id) || isNodeInLink(node.id)"
+                :border-color="node.borderColor || undefined"
+                :background-color="node.backgroundColor || node.fillColor || undefined"
               :class="getLinkStatusClass(node.id)"
               :style="{ maxWidth: `${props.nodeWidth}px`, minWidth: `${Math.min(props.nodeWidth * 0.6, 180)}px` }"
               @click="(e) => { handleNodeClick(node.id, e); }"
               @dblclick="() => handleNodeDoubleClick(node.id)"
-              @edit.stop="emit('edit-item', { type: 'node', id: node.id, nodeId: node.id, sectionId: section.id, chapterId: chapter.id })"
+              @edit="emit('edit-item', { type: 'node', id: node.id, nodeId: node.id, sectionId: section.id, chapterId: chapter.id })"
               @delete="handleDeleteNode(node.id)"
             />
           </div>
           <button
             v-if="section.nodes.length === 0"
             @click="showAddNodeModal(section.id)"
-            class="p-2 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-600 transition text-sm min-w-[180px] h-[70px] flex items-center justify-center gap-2 flex-shrink-0"
+            class="p-3 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition text-sm min-w-[180px] h-[70px] flex items-center justify-center gap-2 flex-shrink-0"
           >
             <i class="ph ph-plus"></i>
             添加知识点
@@ -236,7 +250,7 @@
       <button
         v-if="chapter.sections.length === 0"
         @click="showAddSectionModal = true"
-        class="w-full p-4 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-600 transition text-sm flex items-center justify-center gap-2"
+        class="w-full p-4 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition text-sm flex items-center justify-center gap-2"
       >
         <i class="ph ph-plus-circle"></i>
         添加第一个部分
@@ -249,24 +263,24 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="showAddSectionModal = false"
     >
-      <div class="bg-white p-6 rounded-lg w-96 shadow-xl">
-        <h3 class="text-lg font-bold mb-4">添加部分</h3>
+      <div class="bg-white p-6 rounded-lg w-96 shadow-lg border border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">添加部分</h3>
         <input
           v-model="newSectionName"
           @keyup.enter="addSection"
-          class="w-full border p-2 rounded mb-4 focus:outline-none focus:border-blue-500"
+          class="w-full border border-gray-300 px-3 py-2 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="部分名称 (如: 1.1 基本概念)"
         />
         <div class="flex justify-end gap-2">
           <button
             @click="showAddSectionModal = false"
-            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition"
+            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
           >
             取消
           </button>
           <button
             @click="addSection"
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition shadow-sm"
           >
             创建
           </button>
@@ -280,24 +294,24 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="showRenameChapterModal = false"
     >
-      <div class="bg-white p-6 rounded-lg w-96 shadow-xl">
-        <h3 class="text-lg font-bold mb-4">重命名章节</h3>
+      <div class="bg-white p-6 rounded-lg w-96 shadow-lg border border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">重命名章节</h3>
         <input
           v-model="renameChapterName"
           @keyup.enter="renameChapter"
-          class="w-full border p-2 rounded mb-4 focus:outline-none focus:border-blue-500"
+          class="w-full border border-gray-300 px-3 py-2 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="章节名称"
         />
         <div class="flex justify-end gap-2">
           <button
             @click="showRenameChapterModal = false"
-            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition"
+            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
           >
             取消
           </button>
           <button
             @click="renameChapter"
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition shadow-sm"
           >
             保存
           </button>
@@ -311,24 +325,24 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="showRenameSectionModal = false"
     >
-      <div class="bg-white p-6 rounded-lg w-96 shadow-xl">
-        <h3 class="text-lg font-bold mb-4">重命名部分</h3>
+      <div class="bg-white p-6 rounded-lg w-96 shadow-lg border border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">重命名部分</h3>
         <input
           v-model="renameSectionName"
           @keyup.enter="renameSection"
-          class="w-full border p-2 rounded mb-4 focus:outline-none focus:border-blue-500"
+          class="w-full border border-gray-300 px-3 py-2 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="部分名称"
         />
         <div class="flex justify-end gap-2">
           <button
             @click="showRenameSectionModal = false"
-            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition"
+            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
           >
             取消
           </button>
           <button
             @click="renameSection"
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition shadow-sm"
           >
             保存
           </button>
@@ -342,30 +356,30 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="showAddNodeModalForSection = null"
     >
-      <div class="bg-white p-6 rounded-lg w-96 shadow-xl">
-        <h3 class="text-lg font-bold mb-4">添加知识点</h3>
+      <div class="bg-white p-6 rounded-lg w-96 shadow-lg border border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">添加知识点</h3>
         <input
           v-model="newNodeName"
           @keyup.enter="addNode"
-          class="w-full border p-2 rounded mb-2 focus:outline-none focus:border-blue-500"
+          class="w-full border border-gray-300 px-3 py-2 rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           :placeholder="`知识点名称，留空则使用默认名称`"
         />
         <textarea
           v-model="newNodeContent"
-          class="w-full border p-2 rounded mb-4 focus:outline-none focus:border-blue-500"
+          class="w-full border border-gray-300 px-3 py-2 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
           placeholder="备注/内容 (可选)"
           rows="3"
         ></textarea>
         <div class="flex justify-end gap-2">
           <button
             @click="showAddNodeModalForSection = null"
-            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition"
+            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
           >
             取消
           </button>
           <button
             @click="addNode"
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition shadow-sm"
           >
             创建
           </button>
@@ -380,7 +394,7 @@ import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import KnowledgeCard from './KnowledgeCard.vue'
 import { useProjectStore } from '../stores/projectStore'
-import { useElementBounding } from '@vueuse/core'
+// 删除 useElementBounding 引入，避免为每个节点创建 ResizeObserver 导致性能问题
 
 const projectStore = useProjectStore()
 
@@ -490,6 +504,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'chapter-selected',
   'add-section',
   'delete-chapter',
   'delete-section',
@@ -499,6 +514,7 @@ const emit = defineEmits([
   'node-click',
   'node-dblclick',
   'update-node-positions',
+  'update-node-position', //  新增：用于通知父组件更新单个节点位置
   'edit-item',
   'node-dragging',
   'node-drag-end',
@@ -506,8 +522,11 @@ const emit = defineEmits([
   'chapter-reorder',
   'section-position-updated',
   'section-dragging',
+  'section-drag-end',
+  'section-size-updated',
   'chapter-layout-change',
   'chapter-updated',
+  'chapter-selected',
   'section-updated'
 ])
 
@@ -524,6 +543,8 @@ const renamingSectionId = ref(null)
 const nodeRefs = ref({})
 const nodePositions = ref({})
 const sectionContainerRefs = ref({})
+const chapterRef = ref(null)
+const sectionsContainerRef = ref(null)
 
 // 拖拽相关状态
 const draggingNodeId = ref(null)
@@ -546,6 +567,17 @@ const originalSectionState = ref({
   x: null,
   y: null
 })
+// Delta 算法拖拽状态变量
+const dragStartData = ref({ mouseX: 0, mouseY: 0, initialLeft: 0, initialTop: 0 })
+const nodeDragStartData = ref({ mouseX: 0, mouseY: 0, initialLeft: 0, initialTop: 0 })
+
+// Chapter 拖拽时的原始状态
+const originalChapterState = ref({
+  width: null,
+  height: null,
+  x: null,
+  y: null
+})
 
 // 节点拖拽时的原始状态（用于保持尺寸和位置）
 const originalNodeState = ref({
@@ -554,6 +586,9 @@ const originalNodeState = ref({
   x: null,
   y: null
 })
+
+// 用于存储拖动开始瞬间节点的样式，防止在行列模式下拖动时跳变
+const dragStartNodeStyle = ref({})
 
 // 当前颜色方案（保留作为备选）
 const chapterColorsDefault = [
@@ -712,7 +747,15 @@ const chapterColors = computed(() => {
 
 const chapterColor = computed(() => {
   const index = (props.chapterIndex - 1) % chapterColors.value.length
-  return chapterColors.value[index]
+  const schemeColor = chapterColors.value[index]
+  const customBorder = props.chapter.borderColor
+  const customBg = props.chapter.backgroundColor
+
+  return {
+    ...schemeColor,
+    border: customBorder || schemeColor.border,
+    bg: customBg || schemeColor.bg
+  }
 })
 
 const chapterIcon = computed(() => {
@@ -721,43 +764,284 @@ const chapterIcon = computed(() => {
 })
 
 // 章节布局 - 使用全局布局控制
-// 逻辑：
-// 1. 全局布局是行/列时，作为初始化模板
-// 2. 拖动后自动切换到自由模式，继承当前坐标
-// 3. 全局布局是自由模式时，显示已保存的坐标
+//  核心修复：全局设置拥有最高优先级，忽略数据中的坐标
 const chapterLayout = computed(() => {
-  // 如果全局是自由模式，检查是否有坐标
-  if (props.globalChapterLayout === 'free') {
-    const hasPositionedSections = props.chapter.sections.some(s => s.x != null || s.y != null)
-    if (hasPositionedSections) {
-      return 'free'
-    }
-    // 没有坐标时，使用列排列作为默认
-    return 'column'
+  // 1. 核心修复：如果全局明确指定了 'row' 或 'column'，必须无条件服从
+  // 此时忽略数据中已有的 x/y 坐标
+  if (props.globalChapterLayout === 'row' || props.globalChapterLayout === 'column') {
+    return props.globalChapterLayout
   }
-  
-  // 如果全局是行/列模式，检查是否有坐标（拖动过）
-  const hasPositionedSections = props.chapter.sections.some(s => s.x != null || s.y != null)
-  if (hasPositionedSections) {
-    // 有坐标说明已经拖动过，使用自由模式显示
+
+  // 2. 只有在全局设置为 'free' 或者未定义时，才根据是否有坐标来智能判断
+  if (props.globalChapterLayout === 'free') {
     return 'free'
   }
   
-  // 没有坐标，使用全局布局作为初始化模板
-  return props.globalChapterLayout || 'column'
+  // 3. 智能回退：如果没指定布局，但发现用户拖拽过(有坐标)，则显示为 free
+  const hasPositionedSections = props.chapter.sections.some(s => s.x != null || s.y != null)
+  if (hasPositionedSections) {
+    return 'free'
+  }
+  
+  // 4. 默认兜底
+  return 'column'
+})
+
+// 修复 initializeSectionPositions
+const initializeSectionPositions = () => {
+  const isFreeMode = chapterLayout.value === 'free'
+  
+  nextTick(() => {
+    // 1. 如果不是自由模式，清除可能的脏样式，让 Flex 接管
+    if (!isFreeMode) {
+      adjustParentContainers()
+      emit('chapter-updated')
+      return 
+    }
+
+    // 2. 自由模式逻辑：如果是初次进入自由模式（数据里没有 x/y），则抓取当前 DOM 位置
+    // 核心修复：获取中间容器作为参考系
+    const containerEl = sectionsContainerRef.value
+    if (!containerEl) return
+    
+    let hasUpdates = false
+    
+    props.chapter.sections.forEach((section) => {
+      const el = document.querySelector(`[data-section-id="${section.id}"]`)
+      if (el) {
+        // 只有当 x,y 为 null 或 undefined 时才初始化，防止覆盖已保存的位置
+        if (section.x == null || section.y == null) {
+            // 核心修复：使用 getBoundingClientRect 计算相对位置
+            // 防止 offsetParent 不一致导致的巨大偏移
+            const containerRect = containerEl.getBoundingClientRect()
+            const elRect = el.getBoundingClientRect()
+
+            // 获取容器边框宽度
+            const containerStyle = window.getComputedStyle(containerEl)
+            const borderLeft = parseFloat(containerStyle.borderLeftWidth) || 0
+            const borderTop = parseFloat(containerStyle.borderTopWidth) || 0
+
+            // 相对坐标 = 元素屏幕坐标 - 容器屏幕坐标 - 容器边框
+            section.x = elRect.left - containerRect.left - borderLeft
+            section.y = elRect.top - containerRect.top - borderTop
+            
+            // 锁定尺寸
+            section.width = el.offsetWidth
+            section.height = el.offsetHeight
+            
+            hasUpdates = true
+        }
+        
+        // 同样处理 Nodes
+        section.nodes.forEach(node => {
+            const nodeEl = nodeRefs.value[`${section.id}-${node.id}`]
+            // 兼容 Vue ref
+            const domNode = (nodeEl && nodeEl.$el) ? nodeEl.$el : nodeEl
+            
+            if (domNode && (node.x == null || node.y == null)) {
+                node.x = domNode.offsetLeft
+                node.y = domNode.offsetTop
+                hasUpdates = true
+            }
+        })
+      }
+    })
+
+    if (hasUpdates) {
+        // 如果我们初始化了位置，保存一下，或者至少触发视图更新
+        emit('chapter-updated')
+    }
+  })
+}
+
+//  辅助函数：调整父容器大小，确保包含所有子元素 (自适应高度核心)
+const adjustParentContainers = () => {
+  //  修复：行列模式下，清除所有强制的高度样式，让 Flexbox/CSS 决定高度
+  // 自由模式下才需要精确计算高度
+  
+  // 1. 调整每个 Section 的大小
+  props.chapter.sections.forEach((section) => {
+    const sectionEl = document.querySelector(`[data-section-id="${section.id}"]`)
+    if (!sectionEl) return
+    
+    //  核心修改：行列模式下，清除所有强制的高度样式，让 Flexbox/CSS 决定高度
+    if (chapterLayout.value !== 'free') {
+      sectionEl.style.minHeight = '' // 清除内联样式
+      sectionEl.style.height = ''    // 清除内联样式
+      return
+    }
+    
+    //  自由模式：需要精确计算高度
+    if (!section.nodes || section.nodes.length === 0) {
+      sectionEl.style.minHeight = `${props.sectionHeight || 100}px`
+      sectionEl.style.height = 'auto'
+      return
+    }
+    
+    let maxBottom = 0
+    let isFreeLayout = false
+    
+    // 计算所有节点的底部位置
+    section.nodes.forEach((node) => {
+      //  优先从 Pinia 缓存获取位置（用于模式切换时的准确性）
+      const cached = projectStore.getRowColumnLayout('node', node.id)
+      if (cached) {
+        isFreeLayout = true
+        maxBottom = Math.max(maxBottom, cached.y + cached.height)
+      }
+      // 方式 A: 自由布局 (有坐标)
+      else if (node.x != null && node.y != null) {
+        isFreeLayout = true
+        const nodeH = node.height || 70
+        maxBottom = Math.max(maxBottom, node.y + nodeH)
+      } 
+      // 方式 B: 文档流布局 (无坐标)
+      else {
+        const nodeEl = nodeRefs.value[`${section.id}-${node.id}`]
+        if (nodeEl) {
+          const nodeRect = nodeEl.getBoundingClientRect()
+          const sectionRect = sectionEl.getBoundingClientRect()
+          const nodeRelativeBottom = (nodeRect.top - sectionRect.top) + nodeRect.height
+          maxBottom = Math.max(maxBottom, nodeRelativeBottom)
+        }
+      }
+    })
+    
+    if (maxBottom > 0 || section.nodes.length === 0) {
+      let requiredHeight = maxBottom
+      
+      if (isFreeLayout) {
+         const sectionHeader = sectionEl.querySelector('div.flex.items-center.justify-between.mb-2')
+         const headerHeight = sectionHeader ? sectionHeader.offsetHeight + 8 : 50
+         requiredHeight += headerHeight
+      }
+      
+      const PADDING_BOTTOM_SECTION = 40
+      requiredHeight += PADDING_BOTTOM_SECTION
+      
+      const minPropsHeight = props.sectionHeight || 0
+      const finalHeight = Math.max(requiredHeight, minPropsHeight)
+      
+      sectionEl.style.minHeight = `${finalHeight}px`
+      sectionEl.style.height = 'auto'
+      
+      if (section.height < finalHeight) {
+         section.height = finalHeight
+      }
+    }
+  })
+  
+  // 2. 调整 Chapter 的大小
+  const chapterEl = chapterRef.value
+  if (!chapterEl) return
+  
+  //  核心修改：行列模式下，清除 Chapter 的高度限制
+  if (chapterLayout.value !== 'free') {
+    chapterEl.style.minHeight = '' 
+    chapterEl.style.height = ''
+    return
+  }
+  
+  //  自由模式：需要精确计算高度
+  let maxChapterBottom = 0
+  
+  props.chapter.sections.forEach((section) => {
+    if (section.x != null && section.y != null) {
+      const sectionH = section.height || 200
+      maxChapterBottom = Math.max(maxChapterBottom, section.y + sectionH)
+    } else {
+      const sectionEl = document.querySelector(`[data-section-id="${section.id}"]`)
+      if (sectionEl) {
+        const sectionRect = sectionEl.getBoundingClientRect()
+        const chapterRect = chapterEl.getBoundingClientRect()
+        const sectionRelativeBottom = (sectionRect.top - chapterRect.top) + sectionRect.height
+        maxChapterBottom = Math.max(maxChapterBottom, sectionRelativeBottom)
+      }
+    }
+  })
+  
+  const PADDING_BOTTOM_CHAPTER = 80
+  const calculatedHeight = maxChapterBottom + PADDING_BOTTOM_CHAPTER
+  const minPropsChapterHeight = props.chapterHeight || 400
+  const finalChapterHeight = Math.max(calculatedHeight, minPropsChapterHeight)
+  
+  chapterEl.style.minHeight = `${finalChapterHeight}px`
+  chapterEl.style.height = 'auto'
+}
+
+// 监听布局变化，重新初始化位置
+watch(
+  [() => props.globalChapterLayout, () => props.chapter.sections.length],
+  ([newLayout], [oldLayout] = []) => {
+    // 当从行/列切换到自由时，先冻结当前 DOM 位置，再进入自由模式
+    if (oldLayout && oldLayout !== 'free' && newLayout === 'free' && chapterRef.value) {
+      freezeEverything()
+
+      // 将冻结后的行/列布局坐标持久化给父组件（从而存到后端）
+      props.chapter.sections.forEach((section) => {
+        // Section 坐标
+        emit('section-position-updated', {
+          sectionId: section.id,
+          chapterId: props.chapter.id,
+          x: section.x ?? 0,
+          y: section.y ?? 0,
+          width: section.width,
+          height: section.height
+        })
+
+        // Node 坐标
+        section.nodes.forEach((node) => {
+          if (node.x != null && node.y != null) {
+            emit('update-node-position', {
+              nodeId: node.id,
+              sectionId: section.id,
+              chapterId: props.chapter.id,
+              position: {
+                x: node.x,
+                y: node.y,
+                width: node.width,
+                height: node.height
+              }
+            })
+          }
+        })
+      })
+    }
+    initializeSectionPositions()
+  },
+  { immediate: true, flush: 'pre' }
+)
+
+// 组件挂载时初始化
+onMounted(() => {
+  initializeSectionPositions()
+  adjustParentContainers()
+  saveRowColumnPositions()
+  
+  //  新增：双重保险，确保挂载后再次检查高度
+  // 解决因字体加载、子组件渲染延迟导致的计算偏差
+  setTimeout(() => {
+    adjustParentContainers()
+    containerStyleKey.value++ // 强制触发一次样式重算
+    //  新增：行列模式下，渲染完成后保存位置到后端
+    if (chapterLayout.value !== 'free') {
+      saveRowColumnPositions()
+    }
+  }, 500)
 })
 
 // 节点布局方式（用于行/列模式）
+//  核心修复：Node 布局必须跟随父级布局，不能因为有坐标就乱跑
 const nodeLayout = computed(() => {
-  // 如果 chapter 是自由模式，检查节点是否有坐标
-  if (chapterLayout.value === 'free') {
-    // 在自由模式下，检查当前 section 的节点是否有坐标
-    // 如果有坐标，使用自由布局；否则使用全局节点布局
-    return 'free'
+  // 1. 核心修复：如果 Chapter 处于行列模式，Node 必须强制遵循流式布局
+  // 无论 Node 数据里有没有 x/y，都不能让它变成 absolute
+  if (chapterLayout.value !== 'free') {
+    // 使用全局设定的节点布局 (通常是 'wrap')，或者强制 'wrap'
+    return props.globalNodeLayout || 'wrap'
   }
-  
-  // 否则使用全局节点布局
-  return props.globalNodeLayout || 'wrap'
+
+  // 2. 只有在 Chapter 是 Free 模式时，才允许 Node 自由飞翔
+  return 'free'
 })
 
 // 布局变化时强制重新计算节点位置
@@ -770,6 +1054,10 @@ watch(() => props.chapter.layout, (newLayout, oldLayout) => {
     nextTick(() => {
       // 触发容器样式重新计算
       containerStyleKey.value++
+      //  新增：行列模式下，渲染完成后保存位置到后端
+      if (newLayout !== 'free') {
+        saveRowColumnPositions()
+      }
     })
   }
 })
@@ -788,6 +1076,10 @@ watch(() => props.nodeAlignment, (newAlignment, oldAlignment) => {
     layoutKey.value++
     nextTick(() => {
       containerStyleKey.value++
+      //  新增：行列模式下，渲染完成后保存位置到后端
+      if (chapterLayout.value !== 'free') {
+        saveRowColumnPositions()
+      }
     })
   }
 })
@@ -811,8 +1103,108 @@ watch(() => [
   nextTick(() => {
     // 触发容器样式重新计算
     containerStyleKey.value++
+    //  新增：行列模式下，渲染完成后保存位置到后端
+    if (chapterLayout.value !== 'free') {
+      adjustParentContainers()
+      saveRowColumnPositions()
+    }
   })
 }, { deep: true })
+
+//  Watchers for layout changes
+watch(() => props.globalChapterLayout, (newVal) => {
+  if (newVal === 'free') {
+     // Switching TO Free mode: Styles will update via getSectionStyle using Pinia data
+     adjustParentContainers()
+  } else {
+     // Switching TO Row/Column: Reset heights to auto/min, then save positions
+     adjustParentContainers()
+     saveRowColumnPositions()
+  }
+  containerStyleKey.value++
+})
+
+//  Helper: Get Padding of an element to calculate true absolute position
+const getElementPadding = (el) => {
+  if (!el) return { left: 0, top: 0 }
+  const style = window.getComputedStyle(el)
+  return {
+    left: parseFloat(style.paddingLeft) || 0,
+    top: parseFloat(style.paddingTop) || 0
+  }
+}
+
+//  修改：保存行列模式下的位置到 Pinia（不保存到后端）
+// This captures the "Static" DOM positions and converts them to "Absolute" coordinates
+// 核心修复：使用 sectionsContainerRef 作为参考系，而不是 chapterRef
+const saveRowColumnPositions = async () => {
+  // 只在行列模式下执行
+  if (chapterLayout.value === 'free') return
+  
+  // 延迟执行，确保 DOM 完全渲染
+  await nextTick()
+  setTimeout(() => {
+    try {
+      // 1. 获取中间容器 (Sections Container)
+      const containerEl = sectionsContainerRef.value
+      if (!containerEl) return
+      
+      props.chapter.sections.forEach((section) => {
+        const sectionEl = document.querySelector(`[data-section-id="${section.id}"]`)
+        if (sectionEl) {
+          // 核心修复：计算相对于中间容器的坐标
+          // 使用 getBoundingClientRect 做减法，防止 offsetParent 不一致导致的偏移
+          const containerRect = containerEl.getBoundingClientRect()
+          const sectionRect = sectionEl.getBoundingClientRect()
+          
+          // 获取容器边框宽度
+          const containerStyle = window.getComputedStyle(containerEl)
+          const borderLeft = parseFloat(containerStyle.borderLeftWidth) || 0
+          const borderTop = parseFloat(containerStyle.borderTopWidth) || 0
+          
+          // 修正后的 X/Y (相对于中间容器)
+          // 减去 borderLeft/Top 是为了抵消容器边框的影响，确保 (0,0) 贴合内容区
+          const sX = sectionRect.left - containerRect.left - borderLeft + containerEl.scrollLeft
+          const sY = sectionRect.top - containerRect.top - borderTop + containerEl.scrollTop
+          
+          const sW = sectionEl.offsetWidth
+          const sH = sectionEl.offsetHeight
+          
+          // 保存到 Pinia
+          projectStore.saveRowColumnLayout('section', section.id, {
+            x: sX,
+            y: sY,
+            width: sW,
+            height: sH
+          })
+          
+          // 修复：Save Nodes (Relative to Section Container)
+          // 注意：nodeEl.offsetLeft/offsetTop 已经是相对于最近的 position: relative 容器（节点容器），
+          // 这里不需要再减去 section 的 padding，否则切换到自由模式时节点会整体偏移。
+          section.nodes.forEach((node) => {
+            const nodeEl = document.querySelector(`[data-node-id="${node.id}"]`)
+            if (nodeEl) {
+              const nX = nodeEl.offsetLeft
+              const nY = nodeEl.offsetTop
+              const nW = nodeEl.offsetWidth
+              const nH = nodeEl.offsetHeight
+              
+              // 保存到 Pinia（不保存到后端）
+              projectStore.saveRowColumnLayout('node', node.id, {
+                x: nX,
+                y: nY,
+                width: nW,
+                height: nH
+              })
+            }
+          })
+        }
+      })
+    } catch (error) {
+      console.error('Failed to save row/column positions to Pinia:', error)
+    }
+  }, 150) // 延迟 150ms 确保 DOM 完全渲染
+}
 
 const getColorForChapter = (index) => {
   const colors = ['blue', 'orange', 'green', 'purple', 'indigo']
@@ -1001,108 +1393,97 @@ const setSectionContainerRef = (sectionId, el) => {
 }
 
 // 获取 chapter 容器样式（确保始终包含所有 section）
-// 使用 containerStyleKey 来触发重新计算
 const getChapterContainerStyle = () => {
   const _ = containerStyleKey.value
   
-  // chapter 宽度自适应，但设置最小宽度
-  const minChapterWidth = props.chapterWidth ? props.chapterWidth : 400
-  let minHeight = props.chapterHeight ? props.chapterHeight : 400
+  //  修复：自由模式下，Chapter 使用弹性容器（与行列模式一致），不从 Pinia 加载位置
+  // 只有 Section 和 Node 在自由模式下使用绝对定位
   
+  // 默认最小高度
+  let minHeight = props.chapterHeight || 400
+  
+  // 核心修复：实时计算所有 section 的实际高度，让 chapter 的 minHeight 跟随内部元素变化
   if (props.chapter.sections && props.chapter.sections.length > 0) {
-    if (chapterLayout.value === 'free') {
-      // 在自由布局模式下，计算所有 section 的边界
-      let maxY = 0
-      let minY = Infinity
+    let maxContentBottom = 0
+    
+    // 获取 chapter 容器元素（用于计算相对位置）
+    const chapterEl = chapterRef.value
+    
+    props.chapter.sections.forEach((section, index) => {
+      let sectionBottom = 0
       
-      props.chapter.sections.forEach((section) => {
-        if (section.y != null) {
-          const sectionHeight = section.height || props.sectionHeight || 200
-          const sectionBottom = section.y + sectionHeight
-          
-          minY = Math.min(minY, section.y)
-          maxY = Math.max(maxY, sectionBottom)
+      // 优先使用 DOM 实时计算（最准确）
+      const sectionElement = document.querySelector(`[data-section-id="${section.id}"]`)
+      if (sectionElement) {
+        if (chapterLayout.value === 'free' && section.y != null) {
+          // Free 模式：使用数据模型 + DOM 验证
+          const h = sectionElement.offsetHeight || section.height || 200
+          sectionBottom = section.y + h
         } else {
-          // 如果 section 没有 y 坐标，尝试从 DOM 获取位置
-          const sectionElement = document.querySelector(`[data-section-id="${section.id}"]`)
-          if (sectionElement) {
-            const rect = sectionElement.getBoundingClientRect()
-            const parentElement = sectionElement.parentElement
-            if (parentElement) {
-              const parentRect = parentElement.getBoundingClientRect()
-              const relativeY = rect.top - parentRect.top
-              const sectionHeight = section.height || rect.height || props.sectionHeight || 200
-              const sectionBottom = relativeY + sectionHeight
-              
-              minY = Math.min(minY, relativeY)
-              maxY = Math.max(maxY, sectionBottom)
-            }
-          }
-        }
-      })
-      
-      if (minY !== Infinity) {
-        // 添加边距（上下各 20px），宽度固定不变
-        minHeight = Math.max(maxY - minY + 40, props.chapterHeight || 400)
-      }
-    } else {
-      // 在 row/column 布局模式下，计算所有 section 的实际高度
-      let maxBottom = 0
-      
-      props.chapter.sections.forEach((section, index) => {
-        // 获取 section 的实际高度
-        const sectionElement = document.querySelector(`[data-section-id="${section.id}"]`)
-        let sectionHeight = section.height || props.sectionHeight || 200
-        
-        if (sectionElement) {
-          const rect = sectionElement.getBoundingClientRect()
-          sectionHeight = Math.max(rect.height || sectionHeight, props.sectionHeight || 200)
-        }
-        
-        // 计算 section 的底部位置
-        let sectionBottom = 0
-        if (chapterLayout.value === 'row') {
-          // row 布局：每个 section 垂直排列
-          let accumulatedHeight = 0
-          for (let i = 0; i <= index; i++) {
-            if (i < index) {
-              const prevSection = props.chapter.sections[i]
-              const prevSectionElement = document.querySelector(`[data-section-id="${prevSection.id}"]`)
-              let prevSectionHeight = prevSection.height || props.sectionHeight || 200
-              if (prevSectionElement) {
-                const prevRect = prevSectionElement.getBoundingClientRect()
-                prevSectionHeight = Math.max(prevRect.height || prevSectionHeight, props.sectionHeight || 200)
+          // Row/Column 模式：使用 DOM 实际高度
+          if (chapterLayout.value === 'row') {
+            // Row 模式：累加所有前面的 section 高度 + 当前 section 高度
+            let accumulatedHeight = 0
+            for (let i = 0; i <= index; i++) {
+              const s = props.chapter.sections[i]
+              const sEl = document.querySelector(`[data-section-id="${s.id}"]`)
+              if (sEl) {
+                const sH = sEl.offsetHeight || 200
+                accumulatedHeight += sH + (i > 0 ? props.sectionSpacing : 0)
+              } else {
+                // 如果 DOM 不存在，使用估算值
+                accumulatedHeight += (s.height || props.sectionHeight || 200) + (i > 0 ? props.sectionSpacing : 0)
               }
-              accumulatedHeight += prevSectionHeight + (i > 0 ? props.sectionSpacing : 0)
-            } else {
-              accumulatedHeight += sectionHeight
             }
+            sectionBottom = accumulatedHeight
+          } else {
+            // Column 模式：取最高的 section（所有 section 在同一行）
+            const h = sectionElement.offsetHeight || section.height || props.sectionHeight || 200
+            sectionBottom = h
           }
-          sectionBottom = accumulatedHeight
-        } else {
-          // column 布局：section 在同一行，取最高的
-          sectionBottom = sectionHeight
         }
-        
-        maxBottom = Math.max(maxBottom, sectionBottom)
-      })
+      } else if (section.y != null) {
+        // DOM 不存在时，使用数据模型估算
+        const h = section.height || props.sectionHeight || 200
+        sectionBottom = chapterLayout.value === 'free' ? (section.y + h) : h
+      }
       
-      // 添加 padding 和间距
-      const padding = 24 // p-3 = 12px * 2
-      const headerHeight = 60 // 章节标题区域高度
-      minHeight = Math.max(maxBottom + padding + headerHeight, props.chapterHeight || 400)
+      if (sectionBottom > maxContentBottom) {
+        maxContentBottom = sectionBottom
+      }
+    })
+    
+    // 如果算出了内容高度，更新 minHeight
+    if (maxContentBottom > 0) {
+      // 加上底部 padding（chapter 的 padding-bottom 通常是 16px，加上一些安全边距）
+      const PADDING_BOTTOM = 80
+      minHeight = Math.max(minHeight, maxContentBottom + PADDING_BOTTOM)
     }
   }
+  
+  //  修复：行列模式下，也使用计算出的 minHeight，确保实时跟随
+  const isRowColumnMode = chapterLayout.value !== 'free'
   
   return {
     borderColor: isHexColor(chapterColor.value.border) ? chapterColor.value.border : undefined,
     backgroundColor: isHexColor(chapterColor.value.bg) ? `${chapterColor.value.bg}30` : undefined,
-    width: '100%', // 宽度自适应父容器
-    minWidth: props.chapterWidth ? `${props.chapterWidth}px` : '400px', // 最小宽度
-    maxWidth: '100%', // 最大宽度不超过父容器
-    minHeight: `${minHeight}px`, // 高度根据内容自动调整
+    width: '100%',
+    minWidth: props.chapterWidth ? `${props.chapterWidth}px` : '400px',
+    maxWidth: '100%',
+    
+    // 核心修复：所有模式都使用计算出的 minHeight，实时跟随内部元素变化
+    minHeight: `${minHeight}px`,
+    height: 'auto',
+    // 核心修复：自由模式下章节永远是纵向的（flex-col），仅高度可被调节
+    display: chapterLayout.value === 'free' ? 'flex' : undefined,
+    flexDirection: chapterLayout.value === 'free' ? 'column' : undefined,
+    
+    //  确保 Flex 布局下，如果 Chapter 是 Flex Item，它不会被拉伸填充空白
+    alignSelf: isRowColumnMode ? 'flex-start' : undefined,
+    
     position: 'relative',
-    overflow: 'visible' // 确保内容不被裁剪
+    overflow: 'visible',
+    transition: 'min-height 0.2s ease-out'
   }
 }
 
@@ -1111,8 +1492,16 @@ const getSectionContainerStyle = (section) => {
   // 使用 containerStyleKey 来触发重新计算
   const _ = containerStyleKey.value
   
+  //  修复：行列模式下，容器完全自适应高度
+  const isRowColumnMode = chapterLayout.value !== 'free' && nodeLayout.value !== 'free'
+  
   const style = {
-    minHeight: '80px'
+    minHeight: '80px',
+    position: 'relative', //  核心修复：无论何种布局，始终声明为定位参考点
+    width: '100%',         //  确保宽度撑开
+    overflow: 'visible',    //  确保节点拖出边界不被遮挡
+    height: 'auto',         //  关键：行列模式下自适应高度
+    maxHeight: isRowColumnMode ? 'none' : undefined //  行列模式不限制最大高度
   }
   
   // 根据节点布局方式设置容器样式
@@ -1141,8 +1530,8 @@ const getSectionContainerStyle = (section) => {
     style.justifyContent = props.globalNodeAlignment || 'flex-start'
   } else {
     // 自由模式（free）
-    style.position = 'relative'
     style.minHeight = '200px'
+    // position: 'relative' 已在上面统一设置，不需要重复
   }
   
   // 计算所有节点的最大 y 坐标，确保容器高度足够（支持自动换行，高度不限制）
@@ -1197,172 +1586,152 @@ const getSectionContainerStyle = (section) => {
     style.minHeight = `${Math.max(maxY + 40, 80)}px` // 至少 80px，加上足够的边距（40px）
   }
   
-  // 自由模式需要额外的样式
-  if (nodeLayout.value === 'free') {
-    style.position = 'relative'
-    style.width = '100%'
-    style.overflow = 'visible'
-  }
+  // position, width, overflow 已在上面统一设置，不需要重复判断
   
   return style
 }
 
+//  新增：获取 Section 样式
+const getSectionStyle = (section, index) => {
+  // 1. 自由模式 (Free Mode)
+  if (chapterLayout.value === 'free') {
+    // 优先从 Pinia 缓存获取（用于拖拽时的流畅度），其次是 props 数据
+    const cachedLayout = projectStore.getRowColumnLayout('section', section.id)
+    
+    // 确定坐标：如果缓存有就用缓存，没有就用数据中的 x/y，如果都没有默认为 0
+    // 核心修复：直接使用数值，不要在此处进行 padding 计算，保持坐标系纯粹
+    const x = cachedLayout?.x ?? section.x ?? 0
+    const y = cachedLayout?.y ?? section.y ?? 0
+    const w = cachedLayout?.width ?? section.width ?? (props.sectionWidth || 300)
+    const h = cachedLayout?.height ?? section.height ?? (props.sectionHeight || 200)
+
+    return {
+      position: 'absolute',
+      left: `${x}px`,
+      top: `${y}px`,
+      width: `${w}px`,
+      height: `${h}px`,
+      zIndex: draggingSectionId.value === section.id ? 100 : 1,
+      borderColor: section.borderColor || undefined,
+      backgroundColor: section.backgroundColor || undefined,
+      borderStyle: section.borderColor ? 'solid' : undefined,
+      // 加上这一行，防止 CSS transition 干扰拖拽时的实时性
+      transition: isDraggingSection.value && draggingSectionId.value === section.id ? 'none' : 'box-shadow 0.2s, transform 0.1s' 
+    }
+  }
+  //  核心修改：行列模式下，section 完全根据内容（Nodes）撑开
+  const hasNodes = section.nodes && section.nodes.length > 0
+  // 统一列模式的 minHeight，避免每个 section 高度不一致导致的视觉割裂
+  const uniformColumnMinHeight = (() => {
+    if (chapterLayout.value !== 'column') return null
+    // 优先使用外部传入的 sectionHeight
+    if (props.sectionHeight) return props.sectionHeight
+    // 否则使用所有 section 中的最大高度作为统一 minHeight，默认 200
+    const heights = props.chapter.sections.map(s => s.height).filter(Boolean)
+    const maxHeight = heights.length ? Math.max(...heights) : 200
+    return maxHeight
+  })()
+  
+  return {
+    width: chapterLayout.value === 'row' ? '100%' : (props.sectionWidth ? `${props.sectionWidth}px` : undefined),
+    minWidth: chapterLayout.value === 'row' ? undefined : (chapterLayout.value === 'column' ? undefined : (props.sectionWidth ? `${props.sectionWidth}px` : undefined)),
+    
+    //  关键点 1: 如果有节点，minHeight 为 auto (由内容决定)
+    //  关键点 2: 如果没节点，给一个最小高度 (如 100px) 放置"添加按钮"，防止塌陷无法点击
+    //  列模式下强制使用统一的 minHeight
+    minHeight: chapterLayout.value === 'column'
+      ? `${uniformColumnMinHeight || 200}px`
+      : (hasNodes ? 'auto' : '100px'),
+    
+    //  关键点 3: 强制忽略数据库中保存的 height (那是在自由模式下拉伸产生的)
+    height: 'auto', 
+    
+    marginTop: (chapterLayout.value === 'row' && index > 0 && draggingSectionId.value !== section.id) ? `${props.sectionSpacing}px` : undefined,
+    position: 'relative',
+    zIndex: draggingSectionId.value === section.id ? 100 : undefined,
+    left: undefined,
+    top: undefined,
+    
+    //  关键点 4: Flex 布局顶格对齐，不拉伸
+    //  这解决了 "flex 顶格" 的需求
+    alignSelf: 'flex-start',
+    borderColor: section.borderColor || undefined,
+    backgroundColor: section.backgroundColor || undefined,
+    borderStyle: section.borderColor ? 'solid' : undefined
+  }
+}
+
 // 获取节点样式（绝对定位）
 const getNodeStyle = (node, sectionId) => {
-  // 如果节点有保存的位置（x 和 y 都不为空），且排列方式是 'left'，使用保存的位置
-  // 当排列方式不是 'left' 时，应该忽略保存的位置，强制使用排列方式计算
-  // 布局改变或排列方式改变后，位置会被清除，所以这里会重新计算
-  const shouldUseSavedPosition = node.x != null && node.y != null && props.nodeAlignment === 'left'
+  // 1. 判断是否处于自由模式 (全局或当前)
+  const isFreeMode = nodeLayout.value === 'free' || chapterLayout.value === 'free'
   
-  if (shouldUseSavedPosition) {
+  // 2. 如果不是自由模式，直接返回空，交给 Flexbox 排列
+  if (!isFreeMode) {
+    return {}
+  }
+
+  //  修改：自由模式下，优先从 Pinia 加载位置数据
+  const cachedLayout = projectStore.getRowColumnLayout('node', node.id)
+  if (cachedLayout) {
+    return {
+      left: `${cachedLayout.x}px`,
+      top: `${cachedLayout.y}px`,
+      position: 'absolute',
+      width: cachedLayout.width ? `${cachedLayout.width}px` : `${props.nodeWidth}px`,
+      height: cachedLayout.height ? `${cachedLayout.height}px` : undefined,
+      zIndex: 15
+    }
+  }
+  
+  // 如果没有 Pinia 缓存，使用后端数据
+  if (node.x != null && node.y != null) {
     return {
       left: `${node.x}px`,
-      top: `${node.y}px`
+      top: `${node.y}px`,
+      position: 'absolute',
+      width: node.width ? `${node.width}px` : `${props.nodeWidth}px`, // 优先使用保存的宽度
+      height: node.height ? `${node.height}px` : undefined, // 如果有保存的高度也使用
+      zIndex: 15
     }
   }
   
-  // 否则使用默认位置（按 position 排序，根据布局类型自动排列）
+  //  4. 核心修复：自由模式但没有坐标时的"智能兜底"
+  // 绝不能返回空对象，否则所有节点会堆叠在 (0,0)
+  // 我们根据索引计算一个默认的网格位置
+  
   const section = props.chapter.sections.find(s => s.id === sectionId)
-  if (!section) {
-    return { left: '0px', top: '0px' }
-  }
+  if (!section) return {}
+
+  // 获取当前 Section 的节点列表并找到当前节点的索引
+  const nodes = section.nodes || []
+  const index = nodes.findIndex(n => n.id === node.id)
+  if (index === -1) return {}
+
+  // 计算网格参数
+  const nodeW = props.nodeWidth || 300
+  const nodeH = props.nodeHeight || 70
+  const gapX = props.horizontalSpacing || 50
+  const gapY = props.verticalSpacing || 20
   
-  // 使用 position 字段排序，如果没有则使用索引
-  const sortedNodes = [...section.nodes].sort((a, b) => {
-    const posA = a.position != null ? a.position : section.nodes.findIndex(n => n.id === a.id)
-    const posB = b.position != null ? b.position : section.nodes.findIndex(n => n.id === b.id)
-    return posA - posB
-  })
-  
-  const nodeIndex = sortedNodes.findIndex(n => n.id === node.id)
-  const nodeMaxWidth = props.nodeWidth // 使用全局设置的节点宽度
-  const nodeMinWidth = Math.min(props.nodeWidth * 0.6, 180) // 节点最小宽度
-  const nodeHeight = props.nodeHeight // 使用全局设置的节点高度
-  const horizontalSpacing = props.horizontalSpacing // 使用全局设置的水平间距
-  const verticalSpacing = props.verticalSpacing // 使用全局设置的垂直间距
-  
-  // 获取容器宽度（如果容器还没准备好，使用默认值）
+  // 获取容器宽度 (如果取不到，默认 1000)
   const container = sectionContainerRefs.value[sectionId]
-  const containerWidth = container ? container.clientWidth : 800 // 默认800px
-  const availableWidth = containerWidth - 40 // 减去左右padding
+  const containerWidth = container ? container.clientWidth : 1000
   
-  // 根据布局类型计算位置
-  if (chapterLayout.value === 'column') {
-    // 列布局：节点横向排列，自动换行
-    const nodesPerRow = Math.max(1, Math.floor((availableWidth + horizontalSpacing) / (nodeMaxWidth + horizontalSpacing)))
-    const row = Math.floor(nodeIndex / nodesPerRow)
-    const col = nodeIndex % nodesPerRow
-    
-    // 计算当前行的节点数量（可能少于 nodesPerRow）
-    const nodesInCurrentRow = Math.min(nodesPerRow, sortedNodes.length - row * nodesPerRow)
-    
-    let defaultX = 0
-    const defaultY = row * (nodeHeight + verticalSpacing)
-
-    // 应用对齐方式
-    if (nodesInCurrentRow > 1) {
-      // 多节点情况下的对齐
-      const totalNodesWidth = nodesInCurrentRow * nodeMaxWidth
-      const remainingSpace = availableWidth - totalNodesWidth
-      
-      if (props.nodeAlignment === 'left') {
-        // 左对齐：从左边开始排列
-        defaultX = col * (nodeMaxWidth + horizontalSpacing)
-      } else if (props.nodeAlignment === 'center') {
-        // 居中：整体居中
-        const totalSpacing = (nodesInCurrentRow - 1) * horizontalSpacing
-        const totalUsedWidth = totalNodesWidth + totalSpacing
-        const startX = (availableWidth - totalUsedWidth) / 2
-        defaultX = startX + col * (nodeMaxWidth + horizontalSpacing)
-      } else if (props.nodeAlignment === 'right') {
-        // 右对齐：从右边开始排列
-        const totalSpacing = (nodesInCurrentRow - 1) * horizontalSpacing
-        const totalUsedWidth = totalNodesWidth + totalSpacing
-        const startX = availableWidth - totalUsedWidth
-        defaultX = startX + col * (nodeMaxWidth + horizontalSpacing)
-      } else if (props.nodeAlignment === 'justify-between') {
-        // 两端对齐：第一个在左边，最后一个在右边，中间均匀分布
-        if (nodesInCurrentRow === 1) {
-          defaultX = 0
-        } else {
-          const spaceBetween = (availableWidth - totalNodesWidth) / (nodesInCurrentRow - 1)
-          defaultX = col * (nodeMaxWidth + spaceBetween)
-        }
-      } else if (props.nodeAlignment === 'space-evenly') {
-        // 均匀分布：节点和间距都均匀
-        const space = (availableWidth - totalNodesWidth) / (nodesInCurrentRow + 1)
-        defaultX = space + col * (nodeMaxWidth + space)
-      } else if (props.nodeAlignment === 'space-around') {
-        // 环绕分布：节点两侧的间距相等
-        const space = (availableWidth - totalNodesWidth) / (2 * nodesInCurrentRow)
-        defaultX = space + col * (nodeMaxWidth + 2 * space)
-      }
-    } else {
-      // 单节点情况下的对齐
-      const nodeElement = nodeRefs.value[`${sectionId}-${node.id}`]
-      const actualNodeWidth = nodeElement ? nodeElement.clientWidth : nodeMaxWidth
-      const remainingSpace = availableWidth - actualNodeWidth
-
-      if (props.nodeAlignment === 'center') {
-        defaultX = remainingSpace / 2
-      } else if (props.nodeAlignment === 'right') {
-        defaultX = remainingSpace
-      } else {
-        defaultX = 0 // 左对齐
-      }
-    }
-
-    return {
-      left: `${defaultX}px`,
-      top: `${defaultY}px`,
-      width: `${nodeMaxWidth}px`,
-      height: `${nodeHeight}px`
-    }
-  } else {
-    // 行布局：节点纵向排列，每个 section 独占一行
-    const nodesPerRow = Math.max(1, Math.floor((availableWidth + horizontalSpacing) / (nodeMaxWidth + horizontalSpacing)))
-    const row = Math.floor(nodeIndex / nodesPerRow)
-    const col = nodeIndex % nodesPerRow
-
-    let defaultX = col * (nodeMaxWidth + horizontalSpacing)
-    const defaultY = row * (nodeHeight + verticalSpacing)
-
-    // 应用对齐方式
-    if (nodesPerRow > 1) {
-      const remainingSpace = availableWidth - (nodesPerRow * nodeMaxWidth + (nodesPerRow - 1) * horizontalSpacing)
-      if (props.nodeAlignment === 'center') {
-        defaultX += remainingSpace / 2
-      } else if (props.nodeAlignment === 'right') {
-        defaultX += remainingSpace
-      } else if (props.nodeAlignment === 'justify-between') {
-        const space = remainingSpace / (nodesPerRow - 1)
-        defaultX = col * (nodeMaxWidth + horizontalSpacing + space)
-      } else if (props.nodeAlignment === 'space-evenly') {
-        const space = remainingSpace / (nodesPerRow + 1)
-        defaultX = space + col * (nodeMaxWidth + space)
-      } else if (props.nodeAlignment === 'space-around') {
-        const space = remainingSpace / (2 * nodesPerRow)
-        defaultX = space + col * (nodeMaxWidth + 2 * space)
-      }
-    } else {
-      // 单列时的对齐
-      const nodeElement = nodeRefs.value[`${sectionId}-${node.id}`]
-      const actualNodeWidth = nodeElement ? nodeElement.clientWidth : nodeMaxWidth
-      const remainingSpace = availableWidth - actualNodeWidth
-
-      if (props.nodeAlignment === 'center') {
-        defaultX = remainingSpace / 2
-      } else if (props.nodeAlignment === 'right') {
-        defaultX = remainingSpace
-      }
-    }
-
-    return {
-      left: `${defaultX}px`,
-      top: `${defaultY}px`,
-      width: `${nodeMaxWidth}px`,
-      height: `${nodeHeight}px`
-    }
+  // 计算每行能放几个
+  const itemsPerRow = Math.max(1, Math.floor(containerWidth / (nodeW + gapX)))
+  
+  // 计算行列号
+  const row = Math.floor(index / itemsPerRow)
+  const col = index % itemsPerRow
+  
+  // 返回计算出的默认位置
+  return {
+    left: `${col * (nodeW + gapX)}px`,
+    top: `${row * (nodeH + gapY)}px`,
+    position: 'absolute',
+    width: `${nodeW}px`,
+    zIndex: 1
   }
 }
 
@@ -1371,761 +1740,435 @@ const dragCache = {
   containerRect: null,
   nodeWidth: null,
   nodeHeight: null,
-  containerWidth: null,
-  containerHeight: null
+  containerWidth: null, // 缓存父容器宽度
+  containerHeight: null, // 缓存父容器高度
+  parentRect: null, // 缓存父容器 Rect
+  parentElement: null, // 暂存父容器引用
+  staticMaxBottom: 0, // 其他所有静态元素的最低点
+  staticMaxRight: 0 // 其他所有静态元素的最右点 (如果需要横向扩展)
+}
+
+// ❄️ 1. 计算元素相对于定位父级(Padding Box)的精确坐标
+const calculateRelativePosition = (el, container) => {
+  const elRect = el.getBoundingClientRect()
+  const containerRect = container.getBoundingClientRect()
+  
+  // 获取父容器的边框和内边距 (因为 absolute 是相对于 padding box 定位的)
+  const style = window.getComputedStyle(container)
+  const borderLeft = parseFloat(style.borderLeftWidth) || 0
+  const borderTop = parseFloat(style.borderTopWidth) || 0
+  const paddingLeft = parseFloat(style.paddingLeft) || 0
+  const paddingTop = parseFloat(style.paddingTop) || 0
+  
+  // 核心公式：元素屏幕坐标 - 容器屏幕坐标 - 容器左侧厚度
+  const x = elRect.left - containerRect.left - borderLeft - paddingLeft
+  const y = elRect.top - containerRect.top - borderTop - paddingTop
+  
+  return { x, y, width: elRect.width, height: elRect.height }
+}
+
+// ❄️ 2. 全员冻结：把当前屏幕上所有 Section 和 Node 的视觉位置写入数据模型
+// 核心修复：使用 sectionsContainerRef 作为参考系，而不是 chapterRef
+const freezeEverything = () => {
+  // 改为获取中间容器
+  const containerEl = sectionsContainerRef.value
+  if (!containerEl) return
+
+  // A. 冻结所有 Section (相对于中间容器)
+  props.chapter.sections.forEach(section => {
+    const el = document.querySelector(`[data-section-id="${section.id}"]`)
+    if (el) {
+      // 使用之前定义的 calculateRelativePosition 逻辑 (针对 containerEl)
+      const pos = calculateRelativePosition(el, containerEl)
+      // 强制写入精确坐标和尺寸
+      section.x = pos.x
+      section.y = pos.y
+      section.width = pos.width
+      section.height = pos.height
+    }
+    
+    // B. 冻结该 Section 下的所有 Node (相对于 Section)
+    const sectionContainer = sectionContainerRefs.value[section.id]
+    if (sectionContainer && section.nodes) {
+      section.nodes.forEach(node => {
+        // 获取 Node 的 DOM 元素
+        let nodeEl = nodeRefs.value[`${section.id}-${node.id}`]
+        // 兼容 Vue 组件 ref
+        if (nodeEl && nodeEl.$el) nodeEl = nodeEl.$el 
+        
+        if (nodeEl) {
+          const nodePos = calculateRelativePosition(nodeEl, sectionContainer)
+          node.x = nodePos.x
+          node.y = nodePos.y
+          //  关键：必须锁死宽度，防止从 Flex 变 Absolute 时宽度塌陷
+          node.width = nodePos.width 
+          node.height = nodePos.height 
+        }
+      })
+    }
+  })
 }
 
 // 鼠标拖拽处理（节点拖拽）
 const handleMouseDown = async (event, nodeId, index, sectionId) => {
-  // 如果按住 Ctrl 键，不触发拖拽（用于连接功能）
-  if (event.ctrlKey || event.metaKey) {
+  // 若点击的是交互控件，直接跳过拖拽逻辑
+  if (
+    event.target.closest('button') ||
+    event.target.closest('input') ||
+    event.target.closest('textarea') ||
+    event.target.closest('a') ||
+    event.target.closest('.no-drag')
+  ) {
     return
   }
-  
-  // 如果点击的是按钮、图标或 KnowledgeCard 内部的交互元素，不触发拖拽
-  if (event.target.closest('button') || 
-      event.target.closest('i') || 
-      event.target.closest('[data-no-drag]')) {
-    return
-  }
-  
-  // 如果点击的是 KnowledgeCard 的编辑/删除按钮，不触发拖拽
-  const knowledgeCard = event.target.closest('.knowledge-card')
-  if (knowledgeCard) {
-    const interactiveElement = event.target.closest('button, a, input, textarea, select')
-    if (interactiveElement) {
-      return
-    }
-  }
-  
-  // 如果正在拖拽 section，不触发节点拖拽
-  if (isDraggingSection.value && draggingSectionId.value) {
-    return
-  }
-  
-  // 阻止事件冒泡，防止触发 section 拖拽
+
   event.stopPropagation()
+  // ... (基础校验保持不变) ...
+  if (event.ctrlKey || event.metaKey) return
+  if (chapterLayout.value !== 'free') return // 仅自由模式
+
   event.preventDefault()
   
-  const node = props.chapter.sections.find(s => s.id === sectionId)?.nodes.find(n => n.id === nodeId)
-  if (!node) return
-  
-  const container = sectionContainerRefs.value[sectionId]
-  if (!container) return
-  
-  const nodeElement = nodeRefs.value[`${sectionId}-${nodeId}`]
-  if (!nodeElement) {
-    console.warn('Node element not found:', { nodeId, sectionId, availableKeys: Object.keys(nodeRefs.value) })
-    return
-  }
-  
-  // 缓存容器和节点尺寸（只在开始时计算一次）
-  const containerRect = container.getBoundingClientRect()
-  const nodeRect = nodeElement.getBoundingClientRect()
-  
-  // 计算当前节点在容器中的位置（无论当前是什么布局）
-  const currentX = nodeRect.left - containerRect.left
-  const currentY = nodeRect.top - containerRect.top
-  
-  // 保存原始状态（位置和大小），确保拖拽过程中尺寸不变
-  originalNodeState.value = {
-    width: nodeRect.width,
-    height: nodeRect.height,
-    x: node.x != null ? node.x : currentX,
-    y: node.y != null ? node.y : currentY
-  }
-  
-  // 如果节点没有保存的位置，先保存当前位置
-  if (node.x == null) {
-    node.x = currentX
-  }
-  if (node.y == null) {
-    node.y = currentY
-  }
-  
-  // 为所有其他节点也保存当前位置和大小（如果还没有保存的话）
-  // 这样当拖拽时，其他节点不会因为布局变化而移动或改变大小
   const section = props.chapter.sections.find(s => s.id === sectionId)
-  if (section) {
-    section.nodes.forEach((otherNode) => {
-      if (otherNode.id !== nodeId) {
-        const otherElement = nodeRefs.value[`${sectionId}-${otherNode.id}`]
-        if (otherElement) {
-          // 如果其他节点还没有保存位置，获取其当前位置并保存
-          if (otherNode.x == null || otherNode.y == null) {
-            const otherRect = otherElement.getBoundingClientRect()
-            otherNode.x = otherRect.left - containerRect.left
-            otherNode.y = otherRect.top - containerRect.top
-          }
-        }
-      }
-    })
-  }
-  
-  dragCache.containerRect = containerRect
-  dragCache.nodeWidth = nodeRect.width
-  dragCache.nodeHeight = nodeRect.height
-  dragCache.containerWidth = containerRect.width
-  dragCache.containerHeight = containerRect.height
-  
-  // 计算鼠标相对于节点的偏移（相对于节点元素）
-  nodeDragOffset.value = {
-    x: event.clientX - nodeRect.left,
-    y: event.clientY - nodeRect.top
-  }
-  
-  // 先设置拖拽状态，确保事件监听器能正常工作
+  const node = section?.nodes.find(n => n.id === nodeId)
+  if (!node) return
+
+  // 1. 初始化
   isDraggingNode.value = true
   draggingNodeId.value = nodeId
-  nodeDragStartIndex.value = index
   nodeDragStartSectionId.value = sectionId
+
+  // 2. 记录初始数据 (Delta 核心)
+  // Node 的 x/y 是相对于 Section 的
+  // 如果 node.x 为空，尝试读取 DOM offsetLeft
+  const el = event.currentTarget
+  // 兼容 Vue 组件 ref
+  const domNode = (el && el.$el) ? el.$el : el
   
-  // 添加全局事件监听（在切换布局之前添加，确保能捕获事件）
-  document.addEventListener('mousemove', handleMouseMove, { passive: true })
-  document.addEventListener('mouseup', handleMouseUp)
+  // 获取初始位置
+  const initialLeft = node.x ?? domNode.offsetLeft ?? 0
+  const initialTop = node.y ?? domNode.offsetTop ?? 0
   
-  // 获取当前 section
-  const currentSection = props.chapter.sections.find(s => s.id === sectionId)
-  if (!currentSection) return
-  
-  const currentLayout = currentSection.layout || 'free'
-  
-  // 如果当前不是自由模式，需要先切换到自由模式
-  if (currentLayout !== 'free') {
-    // 保存所有节点的当前视觉位置（相对于容器）
-    currentSection.nodes.forEach((n) => {
-      const el = nodeRefs.value[`${sectionId}-${n.id}`]
-      if (el) {
-        const rect = el.getBoundingClientRect()
-        // 保存相对于容器的位置
-        n.x = rect.left - containerRect.left
-        n.y = rect.top - containerRect.top
-      }
-    })
+  nodeDragStartData.value = {
+    mouseX: event.clientX,
+    mouseY: event.clientY,
+    initialLeft: initialLeft,
+    initialTop: initialTop
   }
-  
-  // 等待 DOM 更新（让 computed 的 nodeLayout 生效）
-  await nextTick()
-  
-  // 为所有节点应用绝对定位和保存的位置（视觉上无变化）
-  currentSection.nodes.forEach((n) => {
-    const el = nodeRefs.value[`${sectionId}-${n.id}`]
-    if (el && n.x != null && n.y != null) {
-      el.style.position = 'absolute'
-      el.style.left = `${n.x}px`
-      el.style.top = `${n.y}px`
-      el.style.margin = '0' // 清除 flex 布局的 margin
-    }
-  })
-  
-  // 设置拖拽中的样式（在拖拽开始时设置一次）
-  nodeElement.style.position = 'absolute'
-  nodeElement.style.zIndex = '20'
-  
-  // 在拖拽开始时设置尺寸锁定（只设置一次，避免在 mousemove 中重复设置）
-  const nodeWidth = originalNodeState.value.width || dragCache.nodeWidth
-  const nodeHeight = originalNodeState.value.height || dragCache.nodeHeight
-  nodeElement.style.setProperty('width', `${nodeWidth}px`, 'important')
-  nodeElement.style.setProperty('height', `${nodeHeight}px`, 'important')
-  nodeElement.style.setProperty('min-width', `${nodeWidth}px`, 'important')
-  nodeElement.style.setProperty('max-width', `${nodeWidth}px`, 'important')
-  nodeElement.style.setProperty('min-height', `${nodeHeight}px`, 'important')
-  nodeElement.style.setProperty('max-height', `${nodeHeight}px`, 'important')
-  
-  // 初始化拖拽状态标志（用于优化 mousemove 性能）
-  handleMouseMove.styleInitialized = true
-  
-  // 确保所有其他节点也保持绝对定位和它们的位置（只在拖拽开始时设置一次）
-  // 使用已存在的 currentSection 变量，避免重复声明
-  if (currentSection) {
-    currentSection.nodes.forEach((otherNode) => {
-      if (otherNode.id !== nodeId && otherNode.x != null && otherNode.y != null) {
-        const otherElement = nodeRefs.value[`${sectionId}-${otherNode.id}`]
-        if (otherElement) {
-          // 保持绝对定位和位置（只在开始时设置一次）
-          otherElement.style.position = 'absolute'
-          otherElement.style.left = `${otherNode.x}px`
-          otherElement.style.top = `${otherNode.y}px`
-        }
-      }
-    })
+
+  // 核心修复：保存初始样式到 dragStartNodeStyle，防止 Vue 重新渲染时闪回
+  dragStartNodeStyle.value = {
+    left: `${initialLeft}px`,
+    top: `${initialTop}px`,
+    position: 'absolute',
+    width: domNode.offsetWidth ? `${domNode.offsetWidth}px` : `${props.nodeWidth}px`,
+    height: domNode.offsetHeight ? `${domNode.offsetHeight}px` : undefined
   }
-  
-  // 防止文本选择
+
+  // 核心修复：在拖拽开始时，直接禁用 DOM 元素的 transition
+  if (domNode) {
+    domNode.style.transition = 'none'
+    domNode.style.willChange = 'transform' // 提示浏览器优化性能
+    // 确保初始位置被设置（防止闪回）
+    domNode.style.left = `${initialLeft}px`
+    domNode.style.top = `${initialTop}px`
+  }
+
+  document.addEventListener('mousemove', handleNodeMouseMove, { passive: false })
+  document.addEventListener('mouseup', handleNodeMouseUp)
+}
+
+// 修改 Node 的 handleNodeMouseMove
+const handleNodeMouseMove = (event) => {
+  if (!isDraggingNode.value || !draggingNodeId.value) return
   event.preventDefault()
+
+  // 1. 计算差值 (Delta 算法)
+  const deltaX = event.clientX - nodeDragStartData.value.mouseX
+  const deltaY = event.clientY - nodeDragStartData.value.mouseY
+
+  // 2. 计算新位置
+  let newLeft = nodeDragStartData.value.initialLeft + deltaX
+  let newTop = nodeDragStartData.value.initialTop + deltaY
+  
+  // 3. 边界限制 (防止拖出 Section 左上角)
+  newLeft = Math.max(0, newLeft)
+  newTop = Math.max(0, newTop)
+
+  // 4. 获取相关对象
+  const section = props.chapter.sections.find(s => s.id === nodeDragStartSectionId.value)
+  const node = section?.nodes.find(n => n.id === draggingNodeId.value)
+  
+  // 获取 Node 和 Section 的 DOM 元素
+  const nodeElement = nodeRefs.value[`${nodeDragStartSectionId.value}-${draggingNodeId.value}`]
+  // 兼容 Vue 组件 ref
+  const domNode = (nodeElement && nodeElement.$el) ? nodeElement.$el : nodeElement
+  const sectionElement = document.querySelector(`[data-section-id="${nodeDragStartSectionId.value}"]`)
+
+  if (node && domNode && sectionElement) {
+    // --- 更新节点位置 ---
+    // 核心修复：拖拽过程中只更新 DOM，不更新 Vue 响应式数据
+    // 这样可以避免 Vue 重新渲染导致的延迟和样式覆盖
+    // 直接操作 DOM 以获得最佳性能 (避免 Vue 渲染循环)
+    domNode.style.left = `${newLeft}px`
+    domNode.style.top = `${newTop}px`
+    
+    // 确保 transition 被禁用（防止被其他样式覆盖）
+    domNode.style.transition = 'none'
+    domNode.style.willChange = 'transform' // 提示浏览器优化性能
+    
+    // 核心修复：同时更新 dragStartNodeStyle，防止 Vue 重新渲染时闪回
+    dragStartNodeStyle.value = {
+      ...dragStartNodeStyle.value,
+      left: `${newLeft}px`,
+      top: `${newTop}px`
+    }
+    
+    // 注意：这里不更新 node.x 和 node.y，避免触发 Vue 重新渲染
+    // 最终位置会在 handleNodeMouseUp 中更新
+    
+    // --- 核心修复：父容器实时自动扩大 (Auto-Expand) ---
+    const nodeWidth = domNode.offsetWidth || props.nodeWidth
+    const nodeHeight = domNode.offsetHeight || props.nodeHeight
+    const PADDING_RIGHT = 60 // 预留右侧空间
+    const PADDING_BOTTOM = 60 // 预留底部空间
+
+    // 计算节点右边界和下边界
+    const nodeRightEdge = newLeft + nodeWidth + PADDING_RIGHT
+    const nodeBottomEdge = newTop + nodeHeight + PADDING_BOTTOM
+    
+    // 获取当前 Section 的尺寸
+    let currentSectionW = section.width || sectionElement.offsetWidth
+    let currentSectionH = section.height || sectionElement.offsetHeight
+
+    let needUpdateSection = false
+
+    // 检查宽度是否需要扩大
+    if (nodeRightEdge > currentSectionW) {
+      currentSectionW = nodeRightEdge
+      section.width = currentSectionW
+      sectionElement.style.width = `${currentSectionW}px`
+      needUpdateSection = true
+    }
+
+    // 检查高度是否需要扩大
+    if (nodeBottomEdge > currentSectionH) {
+      currentSectionH = nodeBottomEdge
+      section.height = currentSectionH
+      sectionElement.style.height = `${currentSectionH}px`
+      // 如果是在 free 模式下，Section 高度变了，可能需要触发 Chapter 的高度重算（如果是自动高度的话）
+      needUpdateSection = true
+    }
+
+    // 更新 Pinia 缓存 (防止重新渲染时闪烁)
+    // 注意：这里更新缓存是为了防止重新渲染时闪烁，但不会触发 Vue 响应式更新
+    // 因为 Pinia 的 reactive 对象更新不会触发组件的重新渲染（除非组件订阅了它）
+    projectStore.saveRowColumnLayout('node', draggingNodeId.value, {
+      x: newLeft,
+      y: newTop,
+      width: nodeWidth,
+      height: nodeHeight
+    })
+    
+    // 如果 Section 尺寸变了，也更新 Section 的缓存
+    if (needUpdateSection) {
+       projectStore.saveRowColumnLayout('section', section.id, {
+          x: section.x, // 保持 x 不变
+          y: section.y, // 保持 y 不变
+          width: currentSectionW,
+          height: currentSectionH
+       })
+       
+       // 触发容器高度重算 key，确保背景等样式跟上
+       // (使用 throttle 防止过于频繁触发)
+       if (!window._resizeThrottle) {
+         window._resizeThrottle = setTimeout(() => {
+           containerStyleKey.value++ // 触发 section 容器重新计算
+           // 核心修复：同时触发 chapter 高度重新计算
+           nextTick(() => {
+             adjustParentContainers()
+           })
+           window._resizeThrottle = null
+         }, 100)
+       }
+    }
+  }
 }
 
-const handleMouseMove = (event) => {
-  // 只处理节点拖拽，如果正在拖拽 section 则忽略
-  if (!isDraggingNode.value || !draggingNodeId.value) return
+// 修改 Node 的 handleNodeMouseUp
+const handleNodeMouseUp = () => {
+  if (!isDraggingNode.value) return
   
-  // 如果正在拖拽 section，不处理节点拖拽
-  if (isDraggingSection.value && draggingSectionId.value) return
-  
+  const nodeId = draggingNodeId.value
   const sectionId = nodeDragStartSectionId.value
-  if (!sectionId) return
-  
-  // 使用 requestAnimationFrame 优化性能，避免频繁更新
-  if (handleMouseMove.rafId) {
-    cancelAnimationFrame(handleMouseMove.rafId)
-  }
-  
-  handleMouseMove.rafId = requestAnimationFrame(() => {
-    // 重新获取容器元素和尺寸（因为 section 可能被拖动，容器位置可能改变）
-    const container = sectionContainerRefs.value[sectionId]
-    if (!container) return
-    
-    // 实时获取容器位置和尺寸（相对于父容器，确保位置是相对的）
-    const containerRect = container.getBoundingClientRect()
-    
-    // 计算新位置（相对于容器，确保位置是相对于 section 容器的）
-    const newX = event.clientX - containerRect.left - nodeDragOffset.value.x
-    const newY = event.clientY - containerRect.top - nodeDragOffset.value.y
-    
-    // 使用保存的原始尺寸，确保拖拽过程中尺寸不变
-    const nodeWidth = originalNodeState.value.width || dragCache.nodeWidth
-    const nodeHeight = originalNodeState.value.height || dragCache.nodeHeight
-    
-    const minX = 0
-    const minY = 0
-    const maxX = containerRect.width - nodeWidth
-    const maxY = containerRect.height - nodeHeight
-    
-    const clampedX = Math.max(minX, Math.min(maxX, newX))
-    const clampedY = Math.max(minY, Math.min(maxY, newY))
-    
-    // 更新节点位置（立即更新UI，位置相对于 section 容器）
-    const node = props.chapter.sections.find(s => s.id === sectionId)?.nodes.find(n => n.id === draggingNodeId.value)
-    if (!node) return
-    
-    const nodeElement = nodeRefs.value[`${sectionId}-${draggingNodeId.value}`]
-    if (!nodeElement) return
-    
-    // 只在第一次设置样式，后续只更新位置（避免重复设置样式导致重排）
-    if (!handleMouseMove.styleInitialized) {
-      // 确保使用绝对定位，不影响其他节点
-      nodeElement.style.position = 'absolute'
-      
-      // 在拖拽过程中强制保持原始尺寸不变（只在开始时设置一次）
-      // 使用 !important 确保覆盖 KnowledgeCard 的样式绑定
-      nodeElement.style.setProperty('width', `${nodeWidth}px`, 'important')
-      nodeElement.style.setProperty('height', `${nodeHeight}px`, 'important')
-      nodeElement.style.setProperty('min-width', `${nodeWidth}px`, 'important')
-      nodeElement.style.setProperty('max-width', `${nodeWidth}px`, 'important')
-      nodeElement.style.setProperty('min-height', `${nodeHeight}px`, 'important')
-      nodeElement.style.setProperty('max-height', `${nodeHeight}px`, 'important')
-      nodeElement.style.zIndex = '20'
-      handleMouseMove.styleInitialized = true
-    }
-    
-    // 应用位置（直接设置 left 和 top，不使用 transform，因为已经是 absolute）
-    nodeElement.style.left = `${clampedX}px`
-    nodeElement.style.top = `${clampedY}px`
-    
-    // 更新节点对象的位置（用于其他节点的位置计算）
-    node.x = clampedX
-    node.y = clampedY
-    
-    // 注意：移除了在每次 mousemove 中更新所有其他节点的逻辑
-    // 这些节点应该在拖拽开始时就已经设置好了，不需要每次更新
-  })
-}
 
-const handleMouseUp = async (event) => {
-  // 只处理节点拖拽结束
-  if (!isDraggingNode.value || !draggingNodeId.value) return
+  document.removeEventListener('mousemove', handleNodeMouseMove)
+  document.removeEventListener('mouseup', handleNodeMouseUp)
   
-  // 如果正在拖拽 section，不处理节点拖拽结束
-  if (isDraggingSection.value && draggingSectionId.value) return
-  
-  const sectionId = nodeDragStartSectionId.value
-  if (!sectionId) {
-    // 清理状态
-    isDraggingNode.value = false
-    draggingNodeId.value = null
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-    return
-  }
-  
-  const container = sectionContainerRefs.value[sectionId]
-  if (container) {
-    const containerRect = container.getBoundingClientRect()
-    
-    // 获取最终位置
-    const finalX = event.clientX - containerRect.left - nodeDragOffset.value.x
-    const finalY = event.clientY - containerRect.top - nodeDragOffset.value.y
-    
-    // 使用保存的原始尺寸
-    const nodeWidth = originalNodeState.value.width || dragCache.nodeWidth
-    const nodeHeight = originalNodeState.value.height || dragCache.nodeHeight
-    
-    // 节点不能超过容器边缘
-    const minX = 0
-    const minY = 0
-    const maxX = containerRect.width - nodeWidth
-    const maxY = containerRect.height - nodeHeight
-    
-    const constrainedX = Math.max(minX, Math.min(maxX, finalX))
-    const constrainedY = Math.max(minY, Math.min(maxY, finalY))
-    
-    // 保存位置到节点（保持原始尺寸）
-    const node = props.chapter.sections.find(s => s.id === sectionId)?.nodes.find(n => n.id === draggingNodeId.value)
-    if (node) {
-      node.x = constrainedX
-      node.y = constrainedY
-      
-      // 拖动结束后，保存坐标到后端
-      // 注意：不保存 section.layout，因为布局由全局控制
-      try {
-        const { api } = await import('../api.js')
-        await api.updateNodePosition(
-          props.projectId,
-          draggingNodeId.value,
-          sectionId,
-          constrainedX,
-          constrainedY
-        )
-      } catch (error) {
-        console.error('Failed to update node position:', error)
-      }
-    }
-    
-    const nodeElement = nodeRefs.value[`${sectionId}-${draggingNodeId.value}`]
-    if (nodeElement) {
-      // 保持绝对定位和原始尺寸
-      nodeElement.style.position = 'absolute'
-      nodeElement.style.left = `${constrainedX}px`
-      nodeElement.style.top = `${constrainedY}px`
-      nodeElement.style.zIndex = ''
-      // 清除 min/max 限制，恢复正常的尺寸行为（移除 important）
-      nodeElement.style.removeProperty('width')
-      nodeElement.style.removeProperty('height')
-      nodeElement.style.removeProperty('min-width')
-      nodeElement.style.removeProperty('max-width')
-      nodeElement.style.removeProperty('min-height')
-      nodeElement.style.removeProperty('max-height')
-      
-      // 拖拽结束后，手动更新 Store 中的位置（因为拖拽时跳过了自动更新）
-      nextTick(() => {
-        const rect = nodeElement.getBoundingClientRect()
-        projectStore.updateNodeLayout(draggingNodeId.value, {
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height
-        })
-      })
-    }
-    
-  }
-  
-  // 清理事件监听
-  document.removeEventListener('mousemove', handleMouseMove)
-  document.removeEventListener('mouseup', handleMouseUp)
-  
-  // 清理 requestAnimationFrame
-  if (handleMouseMove.rafId) {
-    cancelAnimationFrame(handleMouseMove.rafId)
-    handleMouseMove.rafId = null
-  }
-  
-  // 重置样式初始化标志
-  handleMouseMove.styleInitialized = false
-  
-  // 清理拖拽状态（只清理节点相关状态）
-  draggingNodeId.value = null
-  nodeDragStartIndex.value = null
-  nodeDragStartSectionId.value = null
-  
-  // 清除 isDraggingNode（节点拖拽结束）
   isDraggingNode.value = false
+  draggingNodeId.value = null
+  nodeDragStartSectionId.value = null
+
+  const section = props.chapter.sections.find(s => s.id === sectionId)
+  const node = section?.nodes.find(n => n.id === nodeId)
   
-  // 清理缓存
-  dragCache.containerRect = null
-  dragCache.nodeWidth = null
-  dragCache.nodeHeight = null
-  dragCache.containerWidth = null
-  dragCache.containerHeight = null
+  // 获取 DOM 元素以恢复 transition
+  const nodeElement = nodeRefs.value[`${sectionId}-${nodeId}`]
+  const domNode = (nodeElement && nodeElement.$el) ? nodeElement.$el : nodeElement
   
-  // 清理原始状态
-  originalNodeState.value = {
-    width: null,
-    height: null,
-    x: null,
-    y: null
+  if (node && section) {
+    // 核心修复：从 DOM 读取最终位置，更新到响应式数据
+    if (domNode) {
+      const finalLeft = parseFloat(domNode.style.left) || domNode.offsetLeft || 0
+      const finalTop = parseFloat(domNode.style.top) || domNode.offsetTop || 0
+      
+      // 更新响应式数据
+      node.x = finalLeft
+      node.y = finalTop
+      
+      // 恢复 transition（让 Vue 的样式绑定重新生效）
+      domNode.style.transition = ''
+      domNode.style.willChange = ''
+    }
+    
+    // 清除 dragStartNodeStyle，让 Vue 的样式绑定重新生效
+    dragStartNodeStyle.value = {}
+    
+    // 1. 发送节点位置更新
+    emit('update-node-position', {
+      nodeId, 
+      sectionId, 
+      chapterId: props.chapter.id, 
+      position: { x: node.x, y: node.y, width: node.width, height: node.height }
+    })
+    
+    // 2. 核心修复：发送 Section 尺寸更新
+    // 因为拖拽过程中 Section 可能变大了，我们需要保存这个新尺寸到后端
+    const sectionElement = document.querySelector(`[data-section-id="${sectionId}"]`)
+    if (sectionElement) {
+       const finalW = sectionElement.offsetWidth
+       const finalH = sectionElement.offsetHeight
+       
+       // 只有当尺寸真的变化时才发送请求，或者总是发送以防万一
+       // 注意：originalSectionState 是用于 Section 拖拽的，这里我们需要检查节点拖拽前的 Section 尺寸
+       // 为了简化，我们总是发送更新，让后端处理去重
+       emit('section-size-updated', {
+          sectionId,
+          chapterId: props.chapter.id,
+          width: finalW,
+          height: finalH, 
+          x: section.x,
+          y: section.y
+       })
+       
+       // 核心修复：触发 chapter 高度重新计算
+       nextTick(() => {
+         containerStyleKey.value++
+         adjustParentContainers()
+       })
+    }
   }
-  
-  // 通知父组件拖拽结束，更新连接线（最终更新）
-  emit('node-drag-end', { nodeId: draggingNodeId.value })
 }
 
 // Section 自由拖拽定位处理
-const handleSectionMouseDown = async (event, sectionId, index) => {
-  // 如果正在拉伸，不触发拖拽
-  if (resizingSectionId.value) {
-    return
-  }
+const handleSectionMouseDown = (event, sectionId, index) => {
+  // 基础校验：阻止冒泡、检查是否在调整大小、检查是否是自由模式
+  if (resizingSectionId.value || (isDraggingNode.value && draggingNodeId.value) || event.ctrlKey || event.metaKey) return
+  if (event.target.closest('button') || event.target.closest('[data-node-id]') || event.target.closest('.cursor-ew-resize')) return
   
-  // 如果正在拖拽节点，不触发 section 拖拽
-  if (isDraggingNode.value && draggingNodeId.value) {
-    return
-  }
-  
-  // 如果按住 Ctrl 键，不触发拖拽
-  if (event.ctrlKey || event.metaKey) {
-    return
-  }
-  
-  // 如果点击的是按钮或标题，不触发拖拽
-  if (event.target.closest('button') || event.target.closest('h3')) {
-    return
-  }
-  
-  // 如果点击的是节点或其内部元素，不触发 section 拖拽
-  if (event.target.closest('[data-node-id]') || event.target.closest('.knowledge-card')) {
-    return
-  }
-  
-  // 如果点击的是拉伸手柄，不触发拖拽
-  if (event.target.classList.contains('cursor-ew-resize') || 
-      event.target.classList.contains('cursor-ns-resize') ||
-      event.target.classList.contains('cursor-nwse-resize') ||
-      event.target.classList.contains('cursor-nesw-resize') ||
-      event.target.closest('.cursor-ew-resize') ||
-      event.target.closest('.cursor-ns-resize') ||
-      event.target.closest('.cursor-nwse-resize') ||
-      event.target.closest('.cursor-nesw-resize')) {
-    return
-  }
-  
+  // 只在自由模式启用
+  if (chapterLayout.value !== 'free') return
+
   event.preventDefault()
   event.stopPropagation()
-  
+
   const section = props.chapter.sections.find(s => s.id === sectionId)
   if (!section) return
-  
-  const sectionElement = event.currentTarget
-  const sectionRect = sectionElement.getBoundingClientRect()
-  const parentElement = sectionElement.parentElement
-  if (!parentElement) return
-  const parentRect = parentElement.getBoundingClientRect()
-  
-  // 计算当前元素在父容器中的位置（无论当前是什么布局）
-  const currentX = sectionRect.left - parentRect.left
-  const currentY = sectionRect.top - parentRect.top
-  
-  // 保存原始状态（位置和大小）
-  originalSectionState.value = {
-    width: section.width || sectionRect.width,
-    height: section.height || sectionRect.height,
-    x: section.x != null ? section.x : currentX,
-    y: section.y != null ? section.y : currentY
-  }
-  
-  // 如果 section 没有保存的尺寸，先保存当前尺寸
-  if (!section.width) {
-    section.width = originalSectionState.value.width
-  }
-  if (!section.height) {
-    section.height = originalSectionState.value.height
-  }
-  
-  // 立即设置位置，使 section 从流式布局切换到绝对定位
-  section.x = currentX
-  section.y = currentY
-  
-  // 为所有其他 section 也保存当前位置（如果还没有保存的话）
-  // 这样当拖拽时，其他 section 不会因为布局变化而移动
-  props.chapter.sections.forEach((otherSection) => {
-    if (otherSection.id !== sectionId) {
-      // 如果其他 section 还没有保存位置，获取其当前位置并保存
-      if (otherSection.x == null || otherSection.y == null) {
-        const otherElement = document.querySelector(`[data-section-id="${otherSection.id}"]`)
-        if (otherElement) {
-          const otherRect = otherElement.getBoundingClientRect()
-          otherSection.x = otherRect.left - parentRect.left
-          otherSection.y = otherRect.top - parentRect.top
-          
-          // 如果还没有保存尺寸，也保存当前尺寸
-          if (!otherSection.width) {
-            otherSection.width = otherRect.width
-          }
-          if (!otherSection.height) {
-            otherSection.height = otherRect.height
-          }
-        }
-      }
-    }
-  })
-  
-  sectionDragOffset.value = {
-    x: event.clientX - sectionRect.left,
-    y: event.clientY - sectionRect.top
-  }
-  
+
+  // 1. 初始化拖拽状态
   draggingSectionId.value = sectionId
   isDraggingSection.value = true
-  
-  // 拖动时会自动切换到自由模式（通过 computed 的 chapterLayout）
-  // 保存所有 section 的当前视觉位置
-  props.chapter.sections.forEach((s) => {
-    const el = document.querySelector(`[data-section-id="${s.id}"]`)
-    if (el) {
-      const parentElement = el.parentElement
-      if (parentElement) {
-        const parentRect = parentElement.getBoundingClientRect()
-        const rect = el.getBoundingClientRect()
-        s.x = rect.left - parentRect.left
-        s.y = rect.top - parentRect.top
-      }
-    }
-  })
-  
-  // 立即应用绝对定位，避免影响其他 section
-  nextTick(() => {
-    // 为被拖拽的 section 设置绝对定位
-    sectionElement.style.position = 'absolute'
-    sectionElement.style.left = `${currentX}px`
-    sectionElement.style.top = `${currentY}px`
-    sectionElement.style.marginTop = '0'
-    
-    // 为所有其他 section 也设置绝对定位，保持它们的位置
-    props.chapter.sections.forEach((otherSection) => {
-      if (otherSection.id !== sectionId && otherSection.x != null && otherSection.y != null) {
-        const otherElement = document.querySelector(`[data-section-id="${otherSection.id}"]`)
-        if (otherElement && otherElement.style) {
-          otherElement.style.position = 'absolute'
-          otherElement.style.left = `${otherSection.x}px`
-          otherElement.style.top = `${otherSection.y}px`
-          otherElement.style.marginTop = '0'
-          if (otherSection.width) {
-            otherElement.style.width = `${otherSection.width}px`
-          }
-          if (otherSection.height) {
-            otherElement.style.height = `${otherSection.height}px`
-          }
-        }
-      }
-    })
-  })
-  
-  // 添加全局事件监听
-  document.addEventListener('mousemove', handleSectionMouseMove, { passive: true })
+
+  // 2. 记录初始数据 (Delta 算法的核心)
+  // 我们只关心：鼠标在哪？元素原来在哪？
+  // 不再关心父容器在哪，margin是多少，padding是多少。
+  dragStartData.value = {
+    mouseX: event.clientX,
+    mouseY: event.clientY,
+    // 如果数据中没有 x/y，尝试从 DOM 读取 offsetLeft (作为兜底)
+    initialLeft: section.x ?? event.currentTarget.offsetLeft,
+    initialTop: section.y ?? event.currentTarget.offsetTop
+  }
+
+  // 3. 添加监听
+  document.addEventListener('mousemove', handleSectionMouseMove, { passive: false }) // passive: false 允许阻止默认行为
   document.addEventListener('mouseup', handleSectionMouseUp)
 }
 
+// 重写 handleSectionMouseMove
 const handleSectionMouseMove = (event) => {
-  // 只处理 section 拖拽，如果正在拖拽节点则忽略
   if (!isDraggingSection.value || !draggingSectionId.value) return
   
-  // 如果正在拖拽节点，不处理 section 拖拽
-  if (isDraggingNode.value && draggingNodeId.value) return
-  
+  event.preventDefault() // 防止某些浏览器选中文本
+
+  // 1. 计算鼠标位移差 (Delta)
+  const deltaX = event.clientX - dragStartData.value.mouseX
+  const deltaY = event.clientY - dragStartData.value.mouseY
+
+  // 2. 计算新坐标 = 初始坐标 + 差值
+  let newLeft = dragStartData.value.initialLeft + deltaX
+  let newTop = dragStartData.value.initialTop + deltaY
+
+  // 3. 边界限制 (可选：限制不能拖出左上角)
+  newLeft = Math.max(0, newLeft)
+  newTop = Math.max(0, newTop)
+
+  // 4. 更新 Pinia 缓存 (用于平滑渲染)
   const sectionElement = document.querySelector(`[data-section-id="${draggingSectionId.value}"]`)
-  if (!sectionElement) return
-  
-  const section = props.chapter.sections.find(s => s.id === draggingSectionId.value)
-  if (!section) return
-  
-  const parentElement = sectionElement.parentElement
-  const parentRect = parentElement.getBoundingClientRect()
-  
-  // 计算新位置（相对于父容器）
-  const newX = event.clientX - parentRect.left - sectionDragOffset.value.x
-  const newY = event.clientY - parentRect.top - sectionDragOffset.value.y
-  
-  // 使用保存的原始尺寸，确保拖拽过程中尺寸不变
-  const sectionWidth = originalSectionState.value.width
-  const sectionHeight = originalSectionState.value.height
-  
-  // Section 不能超过父容器边缘
-  // X 坐标限制在父容器宽度内
-  const constrainedX = Math.max(0, Math.min(newX, parentRect.width - sectionWidth))
-  // Y 坐标：允许向下移动以拉伸 chapter，但需要确保不超出父容器边缘
-  // 先更新 section 位置，然后触发 chapter 高度重新计算，最后再约束位置
-  const currentParentHeight = parentElement.scrollHeight || parentRect.height
-  // 临时允许超出当前高度，以便触发 chapter 扩展
-  let constrainedY = Math.max(0, newY)
-  
-  // 如果超出当前父容器高度，先触发 chapter 高度更新
-  if (constrainedY + sectionHeight > currentParentHeight) {
-    // 立即触发 chapter 高度重新计算
-    containerStyleKey.value++
-    // 使用 requestAnimationFrame 等待 DOM 更新
-    requestAnimationFrame(() => {
-      const updatedParentHeight = parentElement.scrollHeight || parentRect.height
-      // 重新约束位置，确保不超出更新后的父容器高度
-      constrainedY = Math.max(0, Math.min(constrainedY, updatedParentHeight - sectionHeight))
-      section.y = constrainedY
-      sectionElement.style.top = `${constrainedY}px`
-    })
-  } else {
-    // 如果未超出，正常约束
-    constrainedY = Math.max(0, Math.min(newY, currentParentHeight - sectionHeight))
-  }
-  
-  // 在拖拽过程中强制保持原始尺寸不变
-  sectionElement.style.width = `${sectionWidth}px`
-  sectionElement.style.height = `${sectionHeight}px`
-  
-  // 确保 section 对象的尺寸也保持为原始值（防止被其他地方修改）
-  section.width = sectionWidth
-  section.height = sectionHeight
-  
-  // 确保使用绝对定位，不影响其他 section
-  sectionElement.style.position = 'absolute'
-  sectionElement.style.marginTop = '0'
-  
-  // 应用位置（直接设置 left 和 top，不使用 transform，因为已经是 absolute）
-  sectionElement.style.left = `${constrainedX}px`
-  sectionElement.style.top = `${constrainedY}px`
-  sectionElement.style.zIndex = '100'
-  
-  // 更新 section 对象的位置（用于其他 section 的位置计算）
-  section.x = constrainedX
-  section.y = constrainedY
-  
-  // 确保所有其他 section 也保持绝对定位和它们的位置
-  props.chapter.sections.forEach((otherSection) => {
-    if (otherSection.id !== draggingSectionId.value && otherSection.x != null && otherSection.y != null) {
-      const otherElement = document.querySelector(`[data-section-id="${otherSection.id}"]`)
-      if (otherElement && otherElement.style) {
-        otherElement.style.position = 'absolute'
-        otherElement.style.left = `${otherSection.x}px`
-        otherElement.style.top = `${otherSection.y}px`
-        otherElement.style.marginTop = '0'
-      }
-    }
+  const currentWidth = sectionElement ? sectionElement.offsetWidth : 300
+  const currentHeight = sectionElement ? sectionElement.offsetHeight : 200
+
+  projectStore.saveRowColumnLayout('section', draggingSectionId.value, {
+    x: newLeft,
+    y: newTop,
+    width: currentWidth,
+    height: currentHeight
   })
-  
-  // 触发 chapter 高度重新计算（使用节流，避免过于频繁）
-  if (!handleSectionMouseMove.chapterUpdateTimer) {
-    handleSectionMouseMove.chapterUpdateTimer = setTimeout(() => {
-      containerStyleKey.value++
-      handleSectionMouseMove.chapterUpdateTimer = null
-    }, 100) // 每100ms最多更新一次
+
+  // 5. 实时更新响应式数据 (让 Vue 重新渲染 Style)
+  const section = props.chapter.sections.find(s => s.id === draggingSectionId.value)
+  if (section) {
+    section.x = newLeft
+    section.y = newTop
   }
-  
-  // 触发连接线更新（节流：每 50ms 更新一次）
-  // 暂时禁用实时连接线更新，测试拖拽性能
-  // const now = Date.now()
-  // if (now - lastConnectionUpdateTime >= CONNECTION_UPDATE_INTERVAL) {
-  //   lastConnectionUpdateTime = now
-  //   emit('section-dragging', {
-  //     sectionId: draggingSectionId.value,
-  //     chapterId: props.chapter.id,
-  //     x: constrainedX,
-  //     y: constrainedY
-  //   })
-  // }
 }
 
-const handleSectionMouseUp = async (event) => {
-  // 只处理 section 拖拽结束
-  if (!isDraggingSection.value || !draggingSectionId.value) return
-  
-  // 如果正在拖拽节点，不处理 section 拖拽结束
-  if (isDraggingNode.value && draggingNodeId.value) return
-  
-  const sectionElement = document.querySelector(`[data-section-id="${draggingSectionId.value}"]`)
-  if (sectionElement) {
-    const parentElement = sectionElement.parentElement
-    if (!parentElement) return
-    const parentRect = parentElement.getBoundingClientRect()
-    
-    // 获取最终位置
-    const finalX = event.clientX - parentRect.left - sectionDragOffset.value.x
-    const finalY = event.clientY - parentRect.top - sectionDragOffset.value.y
-    
-    // 使用保存的原始尺寸
-    const sectionWidth = originalSectionState.value.width
-    const sectionHeight = originalSectionState.value.height
-    
-    // Section 不能超过父容器边缘
-    // X 坐标限制在父容器宽度内
-    const constrainedX = Math.max(0, Math.min(finalX, parentRect.width - sectionWidth))
-    // Y 坐标限制在父容器高度内（但父容器高度会根据 section 位置自动调整）
-    // 获取当前父容器的实际高度（可能已经因为其他 section 而扩展）
-    const currentParentHeight = parentElement.scrollHeight || parentRect.height
-    const constrainedY = Math.max(0, Math.min(finalY, currentParentHeight - sectionHeight))
-    
-    // 保存位置到 section（保持原始尺寸）
-    const section = props.chapter.sections.find(s => s.id === draggingSectionId.value)
-    if (section) {
-      section.x = constrainedX
-      section.y = constrainedY
-      // 确保尺寸保持为原始值
-      section.width = sectionWidth
-      section.height = sectionHeight
-      
-      // 触发更新事件，保存位置和尺寸到后端
-      emit('section-position-updated', {
-        sectionId: draggingSectionId.value,
-        chapterId: props.chapter.id,
-        x: constrainedX,
-        y: constrainedY,
-        width: sectionWidth,
-        height: sectionHeight
-      })
-    }
-    
-    // 保持绝对定位和原始尺寸
-    sectionElement.style.position = 'absolute'
-    sectionElement.style.left = `${constrainedX}px`
-    sectionElement.style.top = `${constrainedY}px`
-    sectionElement.style.marginTop = '0'
-    sectionElement.style.zIndex = ''
-    sectionElement.style.width = `${sectionWidth}px`
-    sectionElement.style.height = `${sectionHeight}px`
-    
-    // 确保所有其他 section 也保持绝对定位和它们的位置
-    props.chapter.sections.forEach((otherSection) => {
-      if (otherSection.id !== draggingSectionId.value && otherSection.x != null && otherSection.y != null) {
-        const otherElement = document.querySelector(`[data-section-id="${otherSection.id}"]`)
-        if (otherElement && otherElement.style) {
-          otherElement.style.position = 'absolute'
-          otherElement.style.left = `${otherSection.x}px`
-          otherElement.style.top = `${otherSection.y}px`
-          otherElement.style.marginTop = '0'
-          if (otherSection.width) {
-            otherElement.style.width = `${otherSection.width}px`
-          }
-          if (otherSection.height) {
-            otherElement.style.height = `${otherSection.height}px`
-          }
-        }
-      }
-    })
-    
-    // 触发 chapter 高度重新计算
-    nextTick(() => {
-      containerStyleKey.value++
-    })
-    
-    // 清除原始状态
-    originalSectionState.value = {
-      width: null,
-      height: null,
-      x: null,
-      y: null
-    }
-  }
-  
-  // 清理拖拽状态（只清理 section 相关状态）
-  draggingSectionId.value = null
-  
-  // 清除 isDraggingSection（section 拖拽结束）
-  isDraggingSection.value = false
-  
-  // 清理定时器
-  if (handleSectionMouseMove.chapterUpdateTimer) {
-    clearTimeout(handleSectionMouseMove.chapterUpdateTimer)
-    handleSectionMouseMove.chapterUpdateTimer = null
-  }
-  
+// 重写 handleSectionMouseUp
+const handleSectionMouseUp = () => {
+  if (!isDraggingSection.value) return
+
+  const sectionId = draggingSectionId.value
+  const section = props.chapter.sections.find(s => s.id === sectionId)
+
+  // 移除监听
   document.removeEventListener('mousemove', handleSectionMouseMove)
   document.removeEventListener('mouseup', handleSectionMouseUp)
+  
+  isDraggingSection.value = false
+  draggingSectionId.value = null
+
+  // 保存最终位置到后端
+  if (section) {
+    const sectionElement = document.querySelector(`[data-section-id="${sectionId}"]`)
+    emit('section-position-updated', {
+      sectionId: section.id,
+      chapterId: props.chapter.id,
+      x: section.x,
+      y: section.y,
+      width: sectionElement ? sectionElement.offsetWidth : section.width,
+      height: sectionElement ? sectionElement.offsetHeight : section.height
+    })
+  }
 }
 
 // =============== Section Resize (PPT-like) ===============
@@ -2242,6 +2285,8 @@ const handleSectionResizeUp = () => {
   // 触发 chapter 高度重新计算
   nextTick(() => {
     containerStyleKey.value++
+    // 核心修复：触发 chapter 高度重新计算
+    adjustParentContainers()
   })
   if (!resizingSectionId.value) return
   const section = props.chapter.sections.find(s => s.id === resizingSectionId.value)
@@ -2273,7 +2318,7 @@ const handleSectionResizeUp = () => {
   document.removeEventListener('mousemove', handleSectionResizeMove)
   document.removeEventListener('mouseup', handleSectionResizeUp)
 }
-// Chapter 拖拽处理（暂时不实现，因为章节在列布局中位置相对固定）
+// Chapter 拖拽处理（仅在自由模式下启用）
 const handleChapterMouseDown = (event, chapterId) => {
   // 如果按住 Ctrl 键，不触发拖拽
   if (event.ctrlKey || event.metaKey) {
@@ -2285,22 +2330,104 @@ const handleChapterMouseDown = (event, chapterId) => {
     return
   }
   
-  // 章节拖拽暂时不实现，只触发选中
+  // 核心修复：自由模式下章节不允许被拖动，永远是纵向的，仅高度可被调节
+  // 因此无论什么模式，都不允许章节拖拽
   emit('chapter-selected', chapterId)
+  return
   
-  // 清理缓存和重置时间戳
-  dragCache.containerRect = null
-  dragCache.nodeWidth = null
-  dragCache.nodeHeight = null
-  dragCache.containerWidth = null
-  dragCache.containerHeight = null
-  lastConnectionUpdateTime = 0
+  // 以下代码已禁用（原章节拖拽功能）
+  /*
+  // 只在自由模式下允许拖拽
+  if (chapterLayout.value !== 'free') {
+    emit('chapter-selected', chapterId)
+    return
+  }
   
-  draggingNodeId.value = null
-  nodeDragStartIndex.value = null
-  nodeDragStartSectionId.value = null
-  isDraggingNode.value = false
-  nodeDragOffset.value = { x: 0, y: 0 }
+  // 开始拖拽
+  draggingChapterId.value = chapterId
+  const chapterElement = chapterRef.value
+  if (!chapterElement) return
+  
+  const rect = chapterElement.getBoundingClientRect()
+  const startX = event.clientX
+  const startY = event.clientY
+  const startLeft = rect.left
+  const startTop = rect.top
+  
+  // 保存原始状态
+  originalChapterState.value = {
+    x: props.chapter.x ?? startLeft,
+    y: props.chapter.y ?? startTop,
+    width: props.chapter.width ?? rect.width,
+    height: props.chapter.height ?? rect.height
+  }
+  
+  // 设置初始样式
+  chapterElement.style.position = 'absolute'
+  chapterElement.style.left = `${startLeft}px`
+  chapterElement.style.top = `${startTop}px`
+  chapterElement.style.zIndex = '100'
+  chapterElement.style.transition = 'none'
+  
+  const handleChapterMouseMove = (e) => {
+    if (draggingChapterId.value !== chapterId) return
+    
+    const dx = e.clientX - startX
+    const dy = e.clientY - startY
+    
+    const newLeft = startLeft + dx
+    const newTop = startTop + dy
+    
+    if (chapterElement) {
+      chapterElement.style.left = `${newLeft}px`
+      chapterElement.style.top = `${newTop}px`
+    }
+    
+    emit('chapter-dragging', { chapterId, x: newLeft, y: newTop })
+  }
+  
+  const handleChapterMouseUp = async () => {
+    if (draggingChapterId.value !== chapterId) return
+    
+    const chapterElement = chapterRef.value
+    if (chapterElement) {
+      const finalLeft = parseFloat(chapterElement.style.left)
+      const finalTop = parseFloat(chapterElement.style.top)
+      const finalWidth = chapterElement.offsetWidth
+      const finalHeight = chapterElement.offsetHeight
+      
+      // 更新本地数据
+      if (props.chapter) {
+        props.chapter.x = finalLeft
+        props.chapter.y = finalTop
+        props.chapter.width = finalWidth
+        props.chapter.height = finalHeight
+      }
+      
+      // 发送位置更新事件
+      emit('chapter-position-updated', {
+        chapterId: chapterId,
+        x: finalLeft,
+        y: finalTop,
+        width: finalWidth,
+        height: finalHeight
+      })
+      
+      // 恢复样式
+      chapterElement.style.zIndex = '1'
+      chapterElement.style.transition = ''
+    }
+    
+    draggingChapterId.value = null
+    document.removeEventListener('mousemove', handleChapterMouseMove)
+    document.removeEventListener('mouseup', handleChapterMouseUp)
+  }
+  
+  document.addEventListener('mousemove', handleChapterMouseMove)
+  document.addEventListener('mouseup', handleChapterMouseUp)
+  
+  emit('chapter-selected', chapterId)
+  */
 }
 
 // 旧的拖拽处理函数（保留用于兼容，但不再使用）
@@ -2388,60 +2515,27 @@ const handleDragEnd = () => {
   nodeDragStartSectionId.value = null
 }
 
-// 核心优化：注册节点引用并自动汇报位置
-// 使用 Map 管理 watch，避免重复创建
-const nodeWatchMap = new Map()
-
+// 核心优化：注册节点引用
+// 重写为纯 Ref 收集函数，去掉 useElementBounding 和 ResizeObserver，避免性能问题
 const registerNodeRef = (nodeId, el, sectionId) => {
   if (!sectionId) return
   
   const key = `${sectionId}-${nodeId}`
-  const watchKey = key
   
   if (!el) {
-    // 元素被卸载，清理 watch，但保留 nodeRefs 引用（可能还在拖拽中）
-    const watcher = nodeWatchMap.get(watchKey)
-    if (watcher) {
-      watcher() // 调用 watch 的停止函数
-      nodeWatchMap.delete(watchKey)
-    }
-    // 注意：不清除 nodeRefs，因为可能还在拖拽中
+    // 元素卸载时只清理引用
+    delete nodeRefs.value[key]
     return
   }
   
-  // 同时保存到 nodeRefs 中，用于其他需要访问 DOM 的地方
-  // 使用 sectionId-nodeId 格式的 key，保持与现有代码兼容
+  // 只保存引用，不做任何监听，极低开销
   nodeRefs.value[key] = el
-  // 也保存 nodeId 格式，以防万一
-  nodeRefs.value[nodeId] = el
   
-  // 如果已经存在 watch，先停止旧的（watchKey 已在上面定义）
-  const existingWatcher = nodeWatchMap.get(watchKey)
-  if (existingWatcher) {
-    existingWatcher()
-  }
-  
-  // 使用 VueUse 监听元素位置变化
-  // 这是一个非常高效的方法，底层使用 ResizeObserver + requestAnimationFrame
-  const { top, left, width, height } = useElementBounding(el)
-  
-  // 当位置或尺寸变化时，更新 Store
-  // 注意：拖拽时跳过更新，避免与拖拽逻辑冲突
-  const stopWatcher = watch([top, left, width, height], () => {
-    // 如果正在拖拽这个节点，跳过更新（拖拽逻辑会手动更新位置）
-    if (isDraggingNode.value && draggingNodeId.value === nodeId) {
-      return
-    }
-    projectStore.updateNodeLayout(nodeId, {
-      x: left.value,
-      y: top.value,
-      width: width.value,
-      height: height.value
-    })
-  }, { immediate: true }) // 立即执行一次，确保初始位置被记录
-  
-  // 保存 watch 的停止函数
-  nodeWatchMap.set(watchKey, stopWatcher)
+  // 如果你需要初始化位置（用于连线），仅在第一次挂载时计算一次
+  // 使用 setTimeout 宏任务，让出主线程，避免阻塞渲染
+  setTimeout(() => {
+    updateNodePosition(nodeId, sectionId)
+  }, 0)
 }
 
 // 使用防抖优化节点位置更新（保留用于兼容性，但新代码应使用 registerNodeRef）
@@ -2515,13 +2609,10 @@ watch(() => {
 }, { deep: true })
 
 
-// 组件卸载时清理所有定时器和 watch
+// 组件卸载时清理所有定时器
 onUnmounted(() => {
   nodePositionUpdateTimers.forEach(timer => clearTimeout(timer))
   nodePositionUpdateTimers.clear()
-  // 清理所有节点位置 watch
-  nodeWatchMap.forEach(stopWatcher => stopWatcher())
-  nodeWatchMap.clear()
   nodeRefs.value = {}
   nodePositions.value = {}
 })

@@ -2,9 +2,10 @@
   <div
     :class="[
       'p-2 rounded-lg border-2 bg-white shadow-sm flex items-start space-x-2 min-w-[180px] max-w-[300px] cursor-pointer transition-shadow duration-200',
-      props.class || (isSelected ? 'ring-2 ring-blue-400 border-blue-500 bg-blue-50' : cardColor),
+      props.class || (isSelected ? 'ring-2 ring-blue-400 border-blue-500 bg-blue-50' : (hasCustomColors ? '' : cardColor)),
       !props.class && !isSelected ? 'hover:shadow-lg' : ''
     ]"
+    :style="cardStyle"
     @click="handleClick"
     @dblclick="handleDoubleClick"
   >
@@ -27,6 +28,7 @@
     <div v-if="showActions" class="flex gap-1">
       <button
         @click.stop="handleEdit"
+        @mousedown.stop
         class="p-1 text-gray-400 hover:text-blue-600 transition"
         title="编辑"
       >
@@ -34,6 +36,7 @@
       </button>
       <button
         @click.stop="handleDelete"
+        @mousedown.stop
         class="p-1 text-gray-400 hover:text-red-600 transition"
         title="删除"
       >
@@ -44,6 +47,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 const props = defineProps({
   title: {
     type: String,
@@ -76,10 +81,20 @@ const props = defineProps({
   textColorClass: {
     type: String,
     default: null // 如果提供，使用提供的 Tailwind 类名（如 text-blue-800）
+  },
+  borderColor: {
+    type: String,
+    default: null
+  },
+  backgroundColor: {
+    type: String,
+    default: null
   }
 })
 
 const emit = defineEmits(['click', 'dblclick', 'edit', 'delete'])
+
+const hasCustomColors = computed(() => !!props.borderColor || !!props.backgroundColor)
 
 const colorMap = {
   blue: {
@@ -114,6 +129,12 @@ const cardColor = colorConfig.border
 const iconBgColor = colorConfig.bg + ' bg-opacity-20'
 const iconColor = colorConfig.text
 const iconClass = props.icon
+const cardStyle = computed(() => ({
+  borderColor: props.borderColor || undefined,
+  backgroundColor: props.backgroundColor || undefined,
+  borderStyle: props.borderColor ? 'solid' : undefined,
+  borderWidth: props.borderColor ? '2px' : undefined
+}))
 
 const handleClick = (event) => {
   emit('click', event)

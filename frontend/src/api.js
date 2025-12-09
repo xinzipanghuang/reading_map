@@ -66,13 +66,19 @@ export const api = {
     axios.post(`${API_URL}/projects/${projectId}/chapters/reorder`, {
       chapter_ids: chapterIds
     }),
-  updateNodePosition: (projectId, nodeId, sectionId, x, y) =>
+  updateNodePosition: (projectId, nodeId, sectionId, x, y, width, height) =>
     axios.put(`${API_URL}/projects/${projectId}/nodes/position`, {
       node_id: nodeId,
       section_id: sectionId,
       x: x,
-      y: y
+      y: y,
+      width: width,
+      height: height
     }),
+  updateSectionPosition: (projectId, payload) =>
+    axios.put(`${API_URL}/projects/${projectId}/sections/position`, payload),
+  updateChapterPosition: (projectId, payload) =>
+    axios.put(`${API_URL}/projects/${projectId}/chapters/position`, payload),
   analyzeGraph: (projectId, focusNode) => 
     axios.get(`${API_URL}/projects/${projectId}/graph_analysis?focus_node=${focusNode}`),
   exportProject: (projectId) =>
@@ -92,4 +98,3 @@ export const api = {
     })
   }
 }
-
