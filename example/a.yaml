@@ -1,0 +1,232 @@
+project:
+  id: education_path_k_to_u
+  name: 幼儿园到大学全路径学习重点图谱
+
+chapters:
+
+#--------------------------------------------
+- id: ch1
+  name: 幼儿园（3–6岁）
+  sections:
+  - id: sec1
+    name: 幼儿园阶段
+    nodes:
+    - id: node_k_social
+      name: 社交能力基础
+      content: 学会分享、轮流、表达需求、初步合作
+
+    - id: node_k_language
+      name: 语言表达与早期阅读
+      content: 基础词汇、讲故事、认字兴趣
+
+    - id: node_k_math
+      name: 早期数学感知
+      content: 数量概念、形状、大小比较
+
+    - id: node_k_motor
+      name: 大小肌肉动作发展
+      content: 跑跳、手部精细动作、协调能力
+
+    - id: node_k_habits
+      name: 学习习惯与规则意识
+      content: 遵守规则、坐得住、任务完成意识
+
+
+#--------------------------------------------
+- id: ch2
+  name: 小学（6–12岁）
+  sections:
+  - id: sec2
+    name: 小学阶段
+    nodes:
+    - id: node_p_language
+      name: 阅读理解与基础写作
+      content: 大量阅读、摘要能力、基础作文结构
+
+    - id: node_p_math
+      name: 基础数学（算术 → 逻辑）
+      content: 加减乘除、分数、小数、简单逻辑思维
+
+    - id: node_p_science
+      name: 科学启蒙
+      content: 观察实验、自然科学兴趣、基础科学思维
+
+    - id: node_p_social
+      name: 社会与规则意识
+      content: 集体协作、责任意识形成
+
+    - id: node_p_habits
+      name: 学习习惯与自我管理
+      content: 作业规划、阅读习惯、专注力
+
+
+#--------------------------------------------
+- id: ch3
+  name: 初中（12–15岁）
+  sections:
+  - id: sec3
+    name: 初中阶段
+    nodes:
+    - id: node_m_math
+      name: 数理基础构建
+      content: 代数、方程、几何、函数初步
+
+    - id: node_m_language
+      name: 强化阅读与写作逻辑
+      content: 议论文结构、文本分析、信息筛选
+
+    - id: node_m_science
+      name: 理化生基础
+      content: 实验方法、科学推理、基础模型概念
+
+    - id: node_m_english
+      name: 英语能力提升
+      content: 大量阅读、口语训练、语法系统化
+
+    - id: node_m_self
+      name: 自我认知与兴趣探索
+      content: 初步职业兴趣、学科偏好
+
+
+#--------------------------------------------
+- id: ch4
+  name: 高中（15–18岁）
+  sections:
+  - id: sec4
+    name: 高中阶段
+    nodes:
+    - id: node_h_math
+      name: 高等数学打基础
+      content: 函数、概率、微积分思想、逻辑推理
+
+    - id: node_h_language
+      name: 深层阅读与论证写作
+      content: 结构严谨的思辨能力与表达能力
+
+    - id: node_h_physics
+      name: 物理模型与抽象能力
+      content: 运动学、电磁学、建模思维
+
+    - id: node_h_english
+      name: 实用英语能力
+      content: 论文阅读、学术写作、表达自如
+
+    - id: node_h_self
+      name: 自主学习能力
+      content: 自我规划、资料检索、独立思考
+
+    - id: node_h_direction
+      name: 升学方向与职业规划
+      content: 工科/商科/文社科/艺术/医学等初步定位
+
+
+#--------------------------------------------
+- id: ch5
+  name: 大学（18–22岁）
+  sections:
+  - id: sec5
+    name: 大学阶段
+    nodes:
+    - id: node_u_foundation
+      name: 学科基础课
+      content: 所选专业的基础框架、方法论
+
+    - id: node_u_major
+      name: 专业能力
+      content: 深度学习专业理论+技能
+
+    - id: node_u_research
+      name: 项目与科研能力
+      content: 写论文、做项目、解决真实问题
+
+    - id: node_u_intern
+      name: 实习与社会实践
+      content: 进入行业、理解真实业务
+
+    - id: node_u_life
+      name: 独立生活与自我发展
+      content: 财务管理、人际关系、自我认识
+
+    - id: node_u_future
+      name: 生涯规划（考研/就业/出国）
+      content: 明确下一阶段的路径
+edges:
+
+  # 幼儿园 → 小学
+  - source: node_k_language
+    target: node_p_language
+    label: 早期语言 → 阅读写作
+
+  - source: node_k_math
+    target: node_p_math
+    label: 数感 → 小学数学
+
+  - source: node_k_social
+    target: node_p_social
+    label: 社交基础 → 规则意识
+
+  - source: node_k_habits
+    target: node_p_habits
+    label: 习惯养成 → 学习习惯
+
+
+  # 小学 → 初中
+  - source: node_p_math
+    target: node_m_math
+    label: 基础运算 → 代数与函数
+
+  - source: node_p_language
+    target: node_m_language
+    label: 阅读习惯 → 逻辑表达
+
+  - source: node_p_science
+    target: node_m_science
+    label: 科学兴趣 → 理化生基础
+
+  - source: node_p_habits
+    target: node_m_self
+    label: 学习习惯 → 兴趣探索
+
+
+  # 初中 → 高中
+  - source: node_m_math
+    target: node_h_math
+    label: 代数/几何 → 高等数学思想
+
+  - source: node_m_language
+    target: node_h_language
+    label: 文本理解 → 论证写作
+
+  - source: node_m_science
+    target: node_h_physics
+    label: 理科思维 → 抽象建模
+
+  - source: node_m_english
+    target: node_h_english
+    label: 英语基础 → 学术英语
+
+  - source: node_m_self
+    target: node_h_direction
+    label: 兴趣探索 → 升学方向
+
+
+  # 高中 → 大学
+  - source: node_h_math
+    target: node_u_foundation
+    label: 数学基础 → 专业基础课
+
+  - source: node_h_language
+    target: node_u_research
+    label: 写作表达 → 学术表达
+
+  - source: node_h_english
+    target: node_u_research
+    label: 英语 → 阅读论文
+
+  - source: node_h_self
+    target: node_u_life
+    label: 自主学习 → 独立生活
+
+  - source: node_h_direction
+    target: node_u_future
+    label: 高中定位 → 大学方向

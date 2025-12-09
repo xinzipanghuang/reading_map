@@ -35,8 +35,8 @@ export const api = {
       chapter_id: chapterId, 
       section_name: sectionName 
     }),
-  updateSection: (projectId, sectionId, name) =>
-    axios.put(`${API_URL}/projects/${projectId}/sections/${sectionId}`, { name }),
+  updateSection: (projectId, sectionId, data) =>
+    axios.put(`${API_URL}/projects/${projectId}/sections/${sectionId}`, data),
   deleteSection: (projectId, sectionId) => 
     axios.delete(`${API_URL}/projects/${projectId}/sections/${sectionId}`),
   addNode: (projectId, chapterId, sectionId, nodeName, nodeContent = '') => 
@@ -79,6 +79,11 @@ export const api = {
     axios.put(`${API_URL}/projects/${projectId}/sections/position`, payload),
   updateChapterPosition: (projectId, payload) =>
     axios.put(`${API_URL}/projects/${projectId}/chapters/position`, payload),
+  updateNode: (projectId, nodeId, sectionId, data) =>
+    axios.put(`${API_URL}/projects/${projectId}/nodes/${nodeId}`, {
+      section_id: sectionId,
+      ...data
+    }),
   analyzeGraph: (projectId, focusNode) => 
     axios.get(`${API_URL}/projects/${projectId}/graph_analysis?focus_node=${focusNode}`),
   exportProject: (projectId) =>

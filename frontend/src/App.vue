@@ -485,6 +485,35 @@
                       </div>
                     </div>
                   </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-xs font-medium text-gray-700 mb-2 block">宽度 (px)</label>
+                      <input
+                        type="number"
+                        v-model.number="selectedChapterWidth"
+                        @blur="updateChapterSize"
+                        @change="updateChapterSize"
+                        @click.stop
+                        min="0"
+                        class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="自动"
+                      />
+                    </div>
+                    <div>
+                      <label class="text-xs font-medium text-gray-700 mb-2 block">高度 (px)</label>
+                      <input
+                        type="number"
+                        v-model.number="selectedChapterHeight"
+                        @blur="updateChapterSize"
+                        @change="updateChapterSize"
+                        @click.stop
+                        min="0"
+                        class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="自动"
+                      />
+                    </div>
+                  </div>
               </div>
               
                 <!-- Section Properties -->
@@ -558,6 +587,35 @@
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-xs font-medium text-gray-700 mb-2 block">宽度 (px)</label>
+                      <input
+                        type="number"
+                        v-model.number="selectedSectionWidth"
+                        @blur="updateSectionSize"
+                        @change="updateSectionSize"
+                        @click.stop
+                        min="0"
+                        class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="自动"
+                      />
+                    </div>
+                    <div>
+                      <label class="text-xs font-medium text-gray-700 mb-2 block">高度 (px)</label>
+                      <input
+                        type="number"
+                        v-model.number="selectedSectionHeight"
+                        @blur="updateSectionSize"
+                        @change="updateSectionSize"
+                        @click.stop
+                        min="0"
+                        class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="自动"
+                      />
                     </div>
                   </div>
                 </div>
@@ -643,6 +701,35 @@
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-xs font-medium text-gray-700 mb-2 block">宽度 (px)</label>
+                      <input
+                        type="number"
+                        v-model.number="selectedNodeWidth"
+                        @blur="updateNodeSize"
+                        @change="updateNodeSize"
+                        @click.stop
+                        min="0"
+                        class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="全局"
+                      />
+                    </div>
+                    <div>
+                      <label class="text-xs font-medium text-gray-700 mb-2 block">高度 (px)</label>
+                      <input
+                        type="number"
+                        v-model.number="selectedNodeHeight"
+                        @blur="updateNodeSize"
+                        @change="updateNodeSize"
+                        @click.stop
+                        min="0"
+                        class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="全局"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1480,18 +1567,26 @@ const updateNodeContent = async () => {
   }
 }
 
-// 更新章节边框颜色
-const updateChapterBorderColor = () => {
+// 更新章节边框颜色并保存
+const updateChapterBorderColor = async () => {
   if (!editingItem.value.chapterId) return
   const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   if (chapter) {
     chapter.borderColor = selectedChapterBorderColor.value
     triggerLayoutUpdate()
   }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateChapter(projectStore.currentProjectId, editingItem.value.chapterId, {
+      borderColor: selectedChapterBorderColor.value
+    })
+  } catch (error) {
+    console.error('Failed to update chapter border color:', error)
+  }
 }
 
-// 更新章节填充颜色
-const updateChapterFillColor = () => {
+// 更新章节填充颜色并保存
+const updateChapterFillColor = async () => {
   if (!editingItem.value.chapterId) return
   const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   if (chapter) {
@@ -1499,20 +1594,62 @@ const updateChapterFillColor = () => {
     chapter.fillColor = selectedChapterFillColor.value
     triggerLayoutUpdate()
   }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateChapter(projectStore.currentProjectId, editingItem.value.chapterId, {
+      backgroundColor: selectedChapterFillColor.value,
+      fillColor: selectedChapterFillColor.value
+    })
+  } catch (error) {
+    console.error('Failed to update chapter background color:', error)
+  }
 }
 
-// 更新章节对齐方式
-const updateChapterAlign = () => {
+// 更新章节对齐方式并保存
+const updateChapterAlign = async () => {
   if (!editingItem.value.chapterId) return
   const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   if (chapter) {
     chapter.align = selectedChapterAlign.value
     triggerLayoutUpdate()
   }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateChapter(projectStore.currentProjectId, editingItem.value.chapterId, {
+      align: selectedChapterAlign.value
+    })
+  } catch (error) {
+    console.error('Failed to update chapter align:', error)
+  }
 }
 
-// 更新部分边框颜色
-const updateSectionBorderColor = () => {
+// 更新章节尺寸并保存
+const updateChapterSize = async () => {
+  if (!editingItem.value.chapterId) return
+  const normalize = (val) => (val === null || val === undefined || Number.isNaN(val) || val === '' ? null : val)
+  const width = normalize(selectedChapterWidth.value)
+  const height = normalize(selectedChapterHeight.value)
+
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  if (chapter) {
+    chapter.width = width
+    chapter.height = height
+    triggerLayoutUpdate()
+  }
+
+  try {
+    const { api } = await import('./api.js')
+    await api.updateChapter(projectStore.currentProjectId, editingItem.value.chapterId, {
+      width,
+      height
+    })
+  } catch (error) {
+    console.error('Failed to update chapter size:', error)
+  }
+}
+
+// 更新部分边框颜色并保存
+const updateSectionBorderColor = async () => {
   if (!editingItem.value.sectionId) return
   const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
@@ -1520,10 +1657,18 @@ const updateSectionBorderColor = () => {
     section.borderColor = selectedSectionBorderColor.value
     triggerLayoutUpdate()
   }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateSection(projectStore.currentProjectId, editingItem.value.sectionId, {
+      borderColor: selectedSectionBorderColor.value
+    })
+  } catch (error) {
+    console.error('Failed to update section border color:', error)
+  }
 }
 
-// 更新部分填充颜色
-const updateSectionFillColor = () => {
+// 更新部分填充颜色并保存
+const updateSectionFillColor = async () => {
   if (!editingItem.value.sectionId) return
   const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
@@ -1532,10 +1677,19 @@ const updateSectionFillColor = () => {
     section.fillColor = selectedSectionFillColor.value
     triggerLayoutUpdate()
   }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateSection(projectStore.currentProjectId, editingItem.value.sectionId, {
+      backgroundColor: selectedSectionFillColor.value,
+      fillColor: selectedSectionFillColor.value
+    })
+  } catch (error) {
+    console.error('Failed to update section background color:', error)
+  }
 }
 
-// 更新部分对齐方式
-const updateSectionAlign = () => {
+// 更新部分对齐方式并保存
+const updateSectionAlign = async () => {
   if (!editingItem.value.sectionId) return
   const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
   const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
@@ -1543,11 +1697,45 @@ const updateSectionAlign = () => {
     section.align = selectedSectionAlign.value
     triggerLayoutUpdate()
   }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateSection(projectStore.currentProjectId, editingItem.value.sectionId, {
+      align: selectedSectionAlign.value
+    })
+  } catch (error) {
+    console.error('Failed to update section align:', error)
+  }
 }
 
-// 更新节点边框颜色
-const updateNodeBorderColor = () => {
-  if (!editingItem.value.id) return
+// 更新部分尺寸并保存
+const updateSectionSize = async () => {
+  if (!editingItem.value.sectionId) return
+  const normalize = (val) => (val === null || val === undefined || Number.isNaN(val) || val === '' ? null : val)
+  const width = normalize(selectedSectionWidth.value)
+  const height = normalize(selectedSectionHeight.value)
+
+  const chapter = projectStore.projectData.chapters.find(ch => ch.id === editingItem.value.chapterId)
+  const section = chapter?.sections.find(sec => sec.id === editingItem.value.sectionId)
+  if (section) {
+    section.width = width
+    section.height = height
+    triggerLayoutUpdate()
+  }
+
+  try {
+    const { api } = await import('./api.js')
+    await api.updateSection(projectStore.currentProjectId, editingItem.value.sectionId, {
+      width,
+      height
+    })
+  } catch (error) {
+    console.error('Failed to update section size:', error)
+  }
+}
+
+// 更新节点边框颜色并保存
+const updateNodeBorderColor = async () => {
+  if (!editingItem.value.id || !editingItem.value.sectionId) return
   for (const chapter of projectStore.projectData.chapters) {
     for (const section of chapter.sections) {
       const node = section.nodes.find(n => n.id === editingItem.value.id)
@@ -1558,11 +1746,19 @@ const updateNodeBorderColor = () => {
       }
     }
   }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateNode(projectStore.currentProjectId, editingItem.value.id, editingItem.value.sectionId, {
+      borderColor: selectedNodeBorderColor.value
+    })
+  } catch (error) {
+    console.error('Failed to update node border color:', error)
+  }
 }
 
-// 更新节点填充颜色
-const updateNodeFillColor = () => {
-  if (!editingItem.value.id) return
+// 更新节点填充颜色并保存
+const updateNodeFillColor = async () => {
+  if (!editingItem.value.id || !editingItem.value.sectionId) return
   for (const chapter of projectStore.projectData.chapters) {
     for (const section of chapter.sections) {
       const node = section.nodes.find(n => n.id === editingItem.value.id)
@@ -1574,11 +1770,20 @@ const updateNodeFillColor = () => {
       }
     }
   }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateNode(projectStore.currentProjectId, editingItem.value.id, editingItem.value.sectionId, {
+      backgroundColor: selectedNodeFillColor.value,
+      fillColor: selectedNodeFillColor.value
+    })
+  } catch (error) {
+    console.error('Failed to update node background color:', error)
+  }
 }
 
-// 更新节点对齐方式
-const updateNodeAlign = () => {
-  if (!editingItem.value.id) return
+// 更新节点对齐方式并保存
+const updateNodeAlign = async () => {
+  if (!editingItem.value.id || !editingItem.value.sectionId) return
   for (const chapter of projectStore.projectData.chapters) {
     for (const section of chapter.sections) {
       const node = section.nodes.find(n => n.id === editingItem.value.id)
@@ -1588,6 +1793,44 @@ const updateNodeAlign = () => {
         break
       }
     }
+  }
+  try {
+    const { api } = await import('./api.js')
+    await api.updateNode(projectStore.currentProjectId, editingItem.value.id, editingItem.value.sectionId, {
+      align: selectedNodeAlign.value
+    })
+  } catch (error) {
+    console.error('Failed to update node align:', error)
+  }
+}
+
+// 更新节点尺寸并保存
+const updateNodeSize = async () => {
+  if (!editingItem.value.id || !editingItem.value.sectionId) return
+  const normalize = (val) => (val === null || val === undefined || Number.isNaN(val) || val === '' ? null : val)
+  const width = normalize(selectedNodeWidth.value)
+  const height = normalize(selectedNodeHeight.value)
+
+  for (const chapter of projectStore.projectData.chapters) {
+    for (const section of chapter.sections) {
+      const node = section.nodes.find(n => n.id === editingItem.value.id)
+      if (node) {
+        node.width = width
+        node.height = height
+        triggerLayoutUpdate()
+        break
+      }
+    }
+  }
+
+  try {
+    const { api } = await import('./api.js')
+    await api.updateNode(projectStore.currentProjectId, editingItem.value.id, editingItem.value.sectionId, {
+      width,
+      height
+    })
+  } catch (error) {
+    console.error('Failed to update node size:', error)
   }
 }
 

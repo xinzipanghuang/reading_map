@@ -11,6 +11,7 @@
     :style="getChapterContainerStyle()"
     :data-chapter-id="chapter.id"
     @mousedown="(e) => handleChapterMouseDown(e, chapter.id)"
+    @click="handleChapterClick"
   >
     <!-- Chapter Badge -->
     <div
@@ -36,18 +37,12 @@
     >
       <h2 
         class="text-lg font-bold flex items-center gap-2 px-2 py-1 rounded"
+        @click.stop="emit('edit-item', { type: 'chapter', id: chapter.id, chapterId: chapter.id })"
       >
         <i :class="[chapterIcon, 'text-lg']"></i>
         {{ chapter.name }}
       </h2>
       <div class="flex gap-2">
-        <button
-          @click.stop="emit('edit-item', { type: 'chapter', id: chapter.id, chapterId: chapter.id })"
-          class="p-1.5 text-gray-400 hover:text-blue-600 transition rounded"
-          title="编辑章节属性"
-        >
-          <i class="ph ph-pencil"></i>
-        </button>
         <button
           @click="showAddSectionModal = true"
           class="p-1.5 text-gray-400 hover:text-blue-600 transition rounded"
@@ -91,6 +86,7 @@
         ]"
         :style="getSectionStyle(section, index)"
         @mousedown="(e) => handleSectionMouseDown(e, section.id, index)"
+      @click.stop="(e) => handleSectionClick(section, e)"
       >
         <!-- Resize Handles -->
         <template v-if="true">
@@ -147,17 +143,11 @@
         >
           <h3 
             class="font-medium text-sm px-2 py-1 rounded"
+            @click.stop="emit('edit-item', { type: 'section', id: section.id, sectionId: section.id, chapterId: chapter.id })"
           >
             {{ section.name }}
           </h3>
           <div class="flex gap-2">
-            <button
-              @click.stop="emit('edit-item', { type: 'section', id: section.id, sectionId: section.id, chapterId: chapter.id })"
-              class="p-1 text-gray-400 hover:text-blue-600 transition text-xs"
-              title="编辑部分属性"
-            >
-              <i class="ph ph-pencil"></i>
-            </button>
             <button
               @click="showAddNodeModal(section.id)"
               class="p-1 text-gray-400 hover:text-blue-600 transition text-xs"
@@ -229,9 +219,8 @@
                 :background-color="node.backgroundColor || node.fillColor || undefined"
               :class="getLinkStatusClass(node.id)"
               :style="{ maxWidth: `${props.nodeWidth}px`, minWidth: `${Math.min(props.nodeWidth * 0.6, 180)}px` }"
-              @click="(e) => { handleNodeClick(node.id, e); }"
+              @click="(e) => { handleNodeClick(node, section.id, e); }"
               @dblclick="() => handleNodeDoubleClick(node.id)"
-              @edit="emit('edit-item', { type: 'node', id: node.id, nodeId: node.id, sectionId: section.id, chapterId: chapter.id })"
               @delete="handleDeleteNode(node.id)"
             />
           </div>
@@ -1357,7 +1346,26 @@ const addNode = () => {
   showAddNodeModalForSection.value = null
 }
 
-const handleNodeClick = (nodeId, event) => {
+const handleChapterClick = (event) => {
+  // 点击空白区域时进入章节属性编辑
+  if (event.target.closest('button') || event.target.closest('[data-section-id]') || event.target.closest('[data-node-id]')) {
+    return
+  }
+  emit('edit-item', { type: 'chapter', id: props.chapter.id, chapterId: props.chapter.id })
+}
+
+const handleSectionClick = (section, event) => {
+  // 避免在拖拽/缩放或操作按钮时触发
+  if (resizingSectionId.value || isDraggingSection.value) return
+  if (event.target.closest('button') || event.target.closest('[data-node-id]')) return
+  
+  emit('edit-item', { type: 'section', id: section.id, sectionId: section.id, chapterId: props.chapter.id })
+}
+
+const handleNodeClick = (node, sectionId, event) => {
+  if (event) {
+    event.stopPropagation()
+  }
   // 阻止双击事件触发单击
   if (event && event.detail === 2) {
     return
@@ -1367,17 +1375,23 @@ const handleNodeClick = (nodeId, event) => {
   // 普通左键点击不传递，避免与拖拽冲突
   if (event && (event.ctrlKey || event.metaKey)) {
     // 使用 nextTick 确保事件正确传递
-    emit('node-click', nodeId, event)
+    emit('node-click', node.id, event)
+    return
   }
+
+  // 默认点击：打开属性编辑
+  emit('edit-item', { 
+    type: 'node', 
+    id: node.id, 
+    nodeId: node.id, 
+    sectionId, 
+    chapterId: props.chapter.id 
+  })
 }
 
 const handleNodeDoubleClick = (nodeId) => {
   console.log('Double click on node:', nodeId)
   emit('node-dblclick', nodeId)
-}
-
-const handleEditNode = (node) => {
-  emit('edit-node', node)
 }
 
 const handleDeleteNode = (nodeId) => {
@@ -1995,12 +2009,17 @@ const handleNodeMouseMove = (event) => {
   }
 }
 
-// 修改 Node 的 handleNodeMouseUp
-const handleNodeMouseUp = () => {
+// 修改 Node 的 handleNodeMouseUp，增加点击判定
+const handleNodeMouseUp = (event) => {
   if (!isDraggingNode.value) return
   
   const nodeId = draggingNodeId.value
   const sectionId = nodeDragStartSectionId.value
+
+  // 计算鼠标移动距离，区分点击与拖拽
+  const moveX = Math.abs(event.clientX - nodeDragStartData.value.mouseX)
+  const moveY = Math.abs(event.clientY - nodeDragStartData.value.mouseY)
+  const isClick = moveX < 5 && moveY < 5
 
   document.removeEventListener('mousemove', handleNodeMouseMove)
   document.removeEventListener('mouseup', handleNodeMouseUp)
@@ -2008,6 +2027,23 @@ const handleNodeMouseUp = () => {
   isDraggingNode.value = false
   draggingNodeId.value = null
   nodeDragStartSectionId.value = null
+
+  // 如果是点击，手动触发编辑逻辑并返回
+  if (isClick) {
+    if (event.ctrlKey || event.metaKey) {
+      emit('node-click', nodeId, event)
+    } else {
+      emit('edit-item', { 
+        type: 'node', 
+        id: nodeId, 
+        nodeId: nodeId, 
+        sectionId: sectionId, 
+        chapterId: props.chapter.id 
+      })
+    }
+    dragStartNodeStyle.value = {}
+    return
+  }
 
   const section = props.chapter.sections.find(s => s.id === sectionId)
   const node = section?.nodes.find(n => n.id === nodeId)

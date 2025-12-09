@@ -27,14 +27,6 @@
     </div>
     <div v-if="showActions" class="flex gap-1">
       <button
-        @click.stop="handleEdit"
-        @mousedown.stop
-        class="p-1 text-gray-400 hover:text-blue-600 transition"
-        title="编辑"
-      >
-        <i class="ph ph-pencil text-xs"></i>
-      </button>
-      <button
         @click.stop="handleDelete"
         @mousedown.stop
         class="p-1 text-gray-400 hover:text-red-600 transition"
@@ -92,7 +84,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'dblclick', 'edit', 'delete'])
+const emit = defineEmits(['click', 'dblclick', 'delete'])
 
 const hasCustomColors = computed(() => !!props.borderColor || !!props.backgroundColor)
 
@@ -142,10 +134,6 @@ const handleClick = (event) => {
 
 const handleDoubleClick = (event) => {
   emit('dblclick', event)
-}
-
-const handleEdit = () => {
-  emit('edit')
 }
 
 const handleDelete = () => {
