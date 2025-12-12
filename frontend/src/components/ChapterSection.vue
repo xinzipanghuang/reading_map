@@ -81,15 +81,15 @@
           'bg-white p-3 rounded-lg border border-gray-200 shadow-sm cursor-move transition',
           chapterLayout === 'free' ? 'absolute' : '',
           chapterLayout === 'row' ? 'w-full' : '',
-          chapterLayout === 'column' ? 'flex-1 min-w-[300px]' : '',
+          chapterLayout === 'column' ? 'flex-1' : '',
           draggingSectionId === section.id ? 'opacity-50 scale-95' : 'hover:shadow-md hover:border-gray-300'
         ]"
         :style="getSectionStyle(section, index)"
         @mousedown="(e) => handleSectionMouseDown(e, section.id, index)"
       @click.stop="(e) => handleSectionClick(section, e)"
       >
-        <!-- Resize Handles -->
-        <template v-if="true">
+        <!-- Resize Handles - 所有布局模式下都显示 -->
+        <template v-if="chapterLayout === 'free' || chapterLayout === 'row' || chapterLayout === 'column'">
           <!-- Edges - 更宽的手柄，更容易点击 -->
           <div
             class="absolute inset-y-0 left-0 w-3 cursor-ew-resize z-20 hover:bg-blue-200 hover:bg-opacity-30 transition-colors"
@@ -218,7 +218,7 @@
                 :border-color="node.borderColor || undefined"
                 :background-color="node.backgroundColor || node.fillColor || undefined"
               :class="getLinkStatusClass(node.id)"
-              :style="{ maxWidth: `${props.nodeWidth}px`, minWidth: `${Math.min(props.nodeWidth * 0.6, 180)}px` }"
+              :style="{ maxWidth: `${props.nodeWidth}px`, minWidth: `${Math.min(props.nodeWidth * 0.4, 120)}px` }"
               @click="(e) => { handleNodeClick(node, section.id, e); }"
               @dblclick="() => handleNodeDoubleClick(node.id)"
               @delete="handleDeleteNode(node.id)"
@@ -227,7 +227,7 @@
           <button
             v-if="section.nodes.length === 0"
             @click="showAddNodeModal(section.id)"
-            class="p-3 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition text-sm min-w-[180px] h-[70px] flex items-center justify-center gap-2 flex-shrink-0"
+            class="p-3 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition text-sm min-w-[120px] h-[70px] flex items-center justify-center gap-2 flex-shrink-0"
           >
             <i class="ph ph-plus"></i>
             添加知识点
@@ -1646,19 +1646,34 @@ const getSectionStyle = (section, index) => {
     return maxHeight
   })()
   
+  // 核心修复：优先使用section自身保存的宽高（用户调整后的），其次使用props传入的全局设置
+  // 注意：列模式下忽略宽度设置，强制使用flex-1均分
+  const sectionWidth = (chapterLayout.value === 'column') ? null : (section.width || props.sectionWidth)
+  const sectionHeight = section.height || props.sectionHeight
+  
   return {
-    width: chapterLayout.value === 'row' ? '100%' : (props.sectionWidth ? `${props.sectionWidth}px` : undefined),
-    minWidth: chapterLayout.value === 'row' ? undefined : (chapterLayout.value === 'column' ? undefined : (props.sectionWidth ? `${props.sectionWidth}px` : undefined)),
+    // 宽度处理：
+    // - 行模式：100%宽度
+    // - 列模式：使用flex-1均分，不设置固定width，只设置较小的minWidth（忽略用户设置的宽度）
+    // - 其他模式：使用section自身宽度或全局设置
+    width: chapterLayout.value === 'row' 
+      ? '100%' 
+      : (chapterLayout.value === 'column' 
+          ? undefined  // 列模式不设置固定width，让flex-1均分
+          : (sectionWidth ? `${sectionWidth}px` : undefined)),
+    minWidth: chapterLayout.value === 'row' 
+      ? undefined 
+      : (chapterLayout.value === 'column'
+          ? '200px'  // 列模式使用较小的minWidth，确保能够均分（忽略用户设置的宽度）
+          : (sectionWidth ? `${sectionWidth}px` : '300px')),
     
-    //  关键点 1: 如果有节点，minHeight 为 auto (由内容决定)
-    //  关键点 2: 如果没节点，给一个最小高度 (如 100px) 放置"添加按钮"，防止塌陷无法点击
-    //  列模式下强制使用统一的 minHeight
+    // 高度处理：优先使用section自身高度，其次使用全局设置
     minHeight: chapterLayout.value === 'column'
-      ? `${uniformColumnMinHeight || 200}px`
-      : (hasNodes ? 'auto' : '100px'),
+      ? `${sectionHeight || uniformColumnMinHeight || 200}px`
+      : (sectionHeight ? `${sectionHeight}px` : (hasNodes ? 'auto' : '100px')),
     
-    //  关键点 3: 强制忽略数据库中保存的 height (那是在自由模式下拉伸产生的)
-    height: 'auto', 
+    // 允许内容撑开高度，但不小于minHeight
+    height: sectionHeight ? `${sectionHeight}px` : 'auto',
     
     marginTop: (chapterLayout.value === 'row' && index > 0 && draggingSectionId.value !== section.id) ? `${props.sectionSpacing}px` : undefined,
     position: 'relative',
@@ -2210,9 +2225,44 @@ const handleSectionMouseUp = () => {
 // =============== Section Resize (PPT-like) ===============
 const resizingSectionId = ref(null)
 const resizeDirection = ref(null) // 'n','s','w','e','nw','ne','sw','se'
-const resizeStart = ref({ mouseX: 0, mouseY: 0, startW: 0, startH: 0, startX: 0, startY: 0 })
+const resizeStart = ref({ mouseX: 0, mouseY: 0, startW: 0, startH: 0, startX: 0, startY: 0, minW: 160, minH: 120 })
 const MIN_SECTION_W = 160
 const MIN_SECTION_H = 120
+
+// 计算section内部元素所需的最小尺寸
+const calculateSectionMinSize = (section) => {
+  let minWidth = MIN_SECTION_W
+  let minHeight = MIN_SECTION_H
+  
+  if (section.nodes && section.nodes.length > 0) {
+    let maxRight = 0
+    let maxBottom = 0
+    
+    section.nodes.forEach(node => {
+      const nodeEl = document.querySelector(`[data-node-id="${node.id}"]`)
+      if (nodeEl) {
+        const nodeX = nodeEl.offsetLeft || node.x || 0
+        const nodeY = nodeEl.offsetTop || node.y || 0
+        const nodeW = nodeEl.offsetWidth || node.width || props.nodeWidth || 300
+        const nodeH = nodeEl.offsetHeight || node.height || props.nodeHeight || 70
+        
+        maxRight = Math.max(maxRight, nodeX + nodeW)
+        maxBottom = Math.max(maxBottom, nodeY + nodeH)
+      } else if (node.x != null && node.y != null) {
+        const nodeW = node.width || props.nodeWidth || 300
+        const nodeH = node.height || props.nodeHeight || 70
+        maxRight = Math.max(maxRight, node.x + nodeW)
+        maxBottom = Math.max(maxBottom, node.y + nodeH)
+      }
+    })
+    
+    const PADDING = 40
+    minWidth = Math.max(minWidth, maxRight + PADDING)
+    minHeight = Math.max(minHeight, maxBottom + PADDING)
+  }
+  
+  return { minWidth, minHeight }
+}
 
 const startSectionResize = (event, section, direction) => {
   // 阻止事件冒泡，确保不会触发拖拽
@@ -2224,6 +2274,9 @@ const startSectionResize = (event, section, direction) => {
   const rect = el.getBoundingClientRect()
   const parentRect = parent.getBoundingClientRect()
   
+  // 核心修复：计算内部元素所需的最小尺寸
+  const { minWidth, minHeight } = calculateSectionMinSize(section)
+  
   resizingSectionId.value = section.id
   resizeDirection.value = direction
   resizeStart.value = {
@@ -2232,7 +2285,9 @@ const startSectionResize = (event, section, direction) => {
     startW: section.width || rect.width,
     startH: section.height || rect.height,
     startX: (section.x != null ? section.x : rect.left - parentRect.left),
-    startY: (section.y != null ? section.y : rect.top - parentRect.top)
+    startY: (section.y != null ? section.y : rect.top - parentRect.top),
+    minW: minWidth,  // 保存计算出的最小宽度
+    minH: minHeight  // 保存计算出的最小高度
   }
   
   document.addEventListener('mousemove', handleSectionResizeMove, { passive: true })
@@ -2271,42 +2326,64 @@ const handleSectionResizeMove = (event) => {
     newY = resizeStart.value.startY + dy
   }
   
-  // 限制最小尺寸
-  newW = Math.max(MIN_SECTION_W, newW)
-  newH = Math.max(MIN_SECTION_H, newH)
+  // 核心修复：使用预先计算好的最小尺寸（不能小于内部元素）
+  // 从 resizeStart 中获取在拖拽开始时计算好的最小尺寸
+  const minRequiredWidth = resizeStart.value.minW || MIN_SECTION_W
+  const minRequiredHeight = resizeStart.value.minH || MIN_SECTION_H
+  
+  // 限制最小尺寸（不能小于内部元素）
+  newW = Math.max(minRequiredWidth, newW)
+  newH = Math.max(minRequiredHeight, newH)
+  
+  // 核心修复：从左边或上边拖拽时，如果尺寸已经达到最小值，不允许继续移动位置
+  // 这样可以防止把内部元素"切掉"
+  if (dir.includes('w') && newW === minRequiredWidth) {
+    // 宽度已达最小值，恢复X坐标
+    newX = resizeStart.value.startX + resizeStart.value.startW - minRequiredWidth
+  }
+  if (dir.includes('n') && newH === minRequiredHeight) {
+    // 高度已达最小值，恢复Y坐标
+    newY = resizeStart.value.startY + resizeStart.value.startH - minRequiredHeight
+  }
   
   // 限制在父容器内
   if (chapterLayout.value === 'free') {
     if (newX < 0) {
       newW += newX
       newX = 0
-      newW = Math.max(MIN_SECTION_W, newW)
+      newW = Math.max(minRequiredWidth, newW)
     }
     if (newY < 0) {
       newH += newY
       newY = 0
-      newH = Math.max(MIN_SECTION_H, newH)
+      newH = Math.max(minRequiredHeight, newH)
     }
     if (newX + newW > parentRect.width) {
       newW = parentRect.width - newX
+      newW = Math.max(minRequiredWidth, newW)
     }
     if (newY + newH > parentRect.height) {
       newH = parentRect.height - newY
+      newH = Math.max(minRequiredHeight, newH)
     }
   } else {
     // 在 row/column 布局中，限制最大宽度为父容器的宽度
-    if (newW > parentRect.width) {
+    // 行模式：宽度100%，只能调整高度
+    if (chapterLayout.value === 'row') {
+      newW = parentRect.width - 32 // 减去padding
+    } else if (newW > parentRect.width) {
       newW = parentRect.width
     }
   }
   
-  // 应用尺寸（所有布局形态均可调整）
+  // 核心修复：应用尺寸到响应式数据（所有布局形态均可调整）
   section.width = newW
   section.height = newH
   
-  // 实时更新元素样式
+  // 实时更新元素样式（强制覆盖）
   sectionElement.style.width = `${newW}px`
   sectionElement.style.height = `${newH}px`
+  sectionElement.style.minHeight = `${newH}px`
   
   // 在自由布局时，如果从左/上拉伸则同步移动 x/y
   if (chapterLayout.value === 'free') {
@@ -2315,26 +2392,39 @@ const handleSectionResizeMove = (event) => {
     sectionElement.style.left = `${newX}px`
     sectionElement.style.top = `${newY}px`
   }
+  
+  // 更新Pinia缓存，防止重新渲染时丢失
+  projectStore.saveRowColumnLayout('section', section.id, {
+    x: section.x || 0,
+    y: section.y || 0,
+    width: newW,
+    height: newH
+  })
 }
 
 const handleSectionResizeUp = () => {
-  // 触发 chapter 高度重新计算
-  nextTick(() => {
-    containerStyleKey.value++
-    // 核心修复：触发 chapter 高度重新计算
-    adjustParentContainers()
-  })
   if (!resizingSectionId.value) return
+  
   const section = props.chapter.sections.find(s => s.id === resizingSectionId.value)
-  if (section) {
+  const sectionElement = document.querySelector(`[data-section-id="${resizingSectionId.value}"]`)
+  
+  if (section && sectionElement) {
+    // 核心修复：从DOM读取最终尺寸，确保准确性
+    const finalWidth = sectionElement.offsetWidth
+    const finalHeight = sectionElement.offsetHeight
+    
+    // 更新响应式数据
+    section.width = finalWidth
+    section.height = finalHeight
+    
     // 触发更新事件，保存尺寸和位置到后端
     emit('section-size-updated', {
       sectionId: section.id,
       chapterId: props.chapter.id,
-      width: section.width,
-      height: section.height,
-      x: section.x,
-      y: section.y
+      width: finalWidth,
+      height: finalHeight,
+      x: section.x || 0,
+      y: section.y || 0
     })
     
     // 同时触发位置更新事件（如果是在自由布局）
@@ -2344,15 +2434,23 @@ const handleSectionResizeUp = () => {
         chapterId: props.chapter.id,
         x: section.x,
         y: section.y,
-        width: section.width,
-        height: section.height
+        width: finalWidth,
+        height: finalHeight
       })
     }
   }
+  
+  // 清理状态
   resizingSectionId.value = null
   resizeDirection.value = null
   document.removeEventListener('mousemove', handleSectionResizeMove)
   document.removeEventListener('mouseup', handleSectionResizeUp)
+  
+  // 触发 chapter 高度重新计算
+  nextTick(() => {
+    containerStyleKey.value++
+    adjustParentContainers()
+  })
 }
 // Chapter 拖拽处理（仅在自由模式下启用）
 const handleChapterMouseDown = (event, chapterId) => {
